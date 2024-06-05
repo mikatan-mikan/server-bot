@@ -43,7 +43,7 @@ requirements.txtを参照
 
 ## 使用方法
 
-server.pyを任意の場所に配置します。
+server.pyを任意の場所に配置します。(推奨ディレクトリは実行するserver.[exe/jar]が存在する階層です。)
 
 ただしserver.exeやserver.jar本体が存在する階層はrootでない必要があります。(何かのディレクトリの中に入れてください)これは、`../backup/`内にbackupが生成されるためです。
 
