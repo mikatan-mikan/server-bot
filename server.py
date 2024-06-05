@@ -49,6 +49,7 @@ try:
     server_path = config["server_path"]
     allow_cmd = set(config["allow_mccmd"])
     server_name = config["server_name"]
+    allow = {"ip":config["allow"]["ip"]}
 except KeyError:
     exit("config file is broken. please delete .config and try again.")
 
@@ -468,6 +469,10 @@ async def replace(interaction: discord.Interaction,py_file:discord.Attachment):
 #/ip
 @tree.command(name="ip",description="サーバーのIPアドレスを表示します")
 async def ip(interaction: discord.Interaction):
+    if not allow["ip"]:
+        await interaction.response.send_message("このコマンドはconfigにより実行を拒否されました。")
+        ip_logger.error('ip is not allowed')
+        return
     # ipをget
     try:
         addr = requests.get("https://api.ipify.org")
