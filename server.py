@@ -15,6 +15,7 @@ import os
 from shutil import copystat,Error,copy2
 import sys
 import logging
+import requests
 
 
 
@@ -35,8 +36,6 @@ temp_path = None
 
 #updateプログラムが存在しなければdropboxから./update.pyにコピーする
 if not os.path.exists(server_path + "update.py"):
-    #この場面でしか使わない
-    import requests
     from shutil import copyfile
     url='https://www.dropbox.com/scl/fi/w93o5sndwaiuie0otorm4/update.py?rlkey=gh3gqbt39iwg4afey11p99okp&st=2i9a9dzp&dl=1'
     filename='./update.py'
@@ -297,6 +296,7 @@ cmd_logger = create_logger("cmd")
 help_logger = create_logger("help")
 backup_logger = create_logger("backup")
 replace_logger = create_logger("replace")
+ip_logger = create_logger("ip")
 
 
 
@@ -425,6 +425,20 @@ async def replace(interaction: discord.Interaction,py_file:discord.Attachment):
     replace_logger.info('replace args : ' + msg_id + " " + channel_id)
     os.execv(sys.executable,["python3",server_path + "update.py",temp_path + "\\new_source.py",msg_id,channel_id])
 
+#/ip
+@tree.command(name="ip",description="サーバーのIPアドレスを表示します")
+async def ip(interaction: discord.Interaction):
+    # ipをget
+    try:
+        addr = requests.get("https://api.ipify.org")
+    except:
+        ip_logger.error('get ip failed')
+        await interaction.response.send_message("IPアドレスを取得できません")
+        return
+    ip_logger.info('get ip : ' + addr.text)
+    await interaction.response.send_message(addr.text)
+
+
 #/help
 @tree.command(name="help",description="botのコマンド一覧を表示します")
 async def help(interaction: discord.Interaction):
@@ -441,7 +455,6 @@ async def exit(interaction: discord.Interaction):
     await interaction.response.send_message("botを終了します...")
     exit_logger.info('exit')
     await client.close()
-
 
 
 client.run(token, log_formatter=formatter)
