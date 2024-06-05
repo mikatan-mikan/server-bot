@@ -24,8 +24,6 @@ print()
 
 #サーバープロセス
 process = None
-server_path = os.getcwd() + "\\"
-server_name = "bedrock_server.exe"
 
 #現在のディレクトリ名を取得
 now_dir = os.path.basename(os.getcwd())
@@ -34,9 +32,28 @@ now_dir = os.path.basename(os.getcwd())
 token = None
 temp_path = None 
 
+def make_config():
+    import json
+    if not os.path.exists(os.getcwd() + "\\" + ".config"):
+        file = open(os.getcwd() + "\\"  + ".config","w")
+        config_dict = {"allow":{"ip":True},"server_path":os.getcwd() + "\\","allow_mccmd":["list","whitelist","tellraw","w","tell"],"server_name":"bedrock_server.exe"}
+        json.dump(config_dict,file,indent=4)
+    else:
+        config_dict = json.load(open(os.getcwd() + "\\"  + ".config","r"))
+    return config_dict
+
+
+config = make_config()
+
+try:
+    server_path = config["server_path"]
+    allow_cmd = set(config["allow_mccmd"])
+    server_name = config["server_name"]
+except KeyError:
+    exit("config file is broken. please delete .config and try again.")
+
 #updateプログラムが存在しなければdropboxから./update.pyにコピーする
 if not os.path.exists(server_path + "update.py"):
-    from shutil import copyfile
     url='https://www.dropbox.com/scl/fi/w93o5sndwaiuie0otorm4/update.py?rlkey=gh3gqbt39iwg4afey11p99okp&st=2i9a9dzp&dl=1'
     filename='./update.py'
 
@@ -77,6 +94,7 @@ def make_temp():
     if not os.path.exists(temp_path):
         os.mkdir(temp_path)
 
+
 make_logs_file()
 make_token_file()
 make_temp()
@@ -95,11 +113,13 @@ is_back_discord = False
 
 #help
 help_str = {
-    "/stop  ":"サーバーを停止します。但し起動していない場合にはエラーメッセージを返します。",
-    "/start ":"サーバーを起動します。但し起動している場合にはエラーメッセージを返します。",
-    "/exit  ":"botを終了します。サーバーを停止してから実行してください。終了していない場合にはエラーメッセージを返します。\nまたこのコマンドを実行した場合次にbotが起動するまですべてのコマンドが無効になります。",
-    "/cmd   ":f"/cmd <mcコマンド>を用いてサーバーコンソール上でコマンドを実行できます。使用できるコマンドは{allow_cmd}です。",
-    "/backup":"/backup [ワールド名] ワールドデータをバックアップします。ワールド名を省略した場合worldsをコピーします。サーバーを停止した状態で実行してください",
+    "/stop   ":"サーバーを停止します。但し起動していない場合にはエラーメッセージを返します。",
+    "/start  ":"サーバーを起動します。但し起動している場合にはエラーメッセージを返します。",
+    "/exit   ":"botを終了します。サーバーを停止してから実行してください。終了していない場合にはエラーメッセージを返します。\nまたこのコマンドを実行した場合次にbotが起動するまですべてのコマンドが無効になります。",
+    "/cmd    ":f"/cmd <mcコマンド>を用いてサーバーコンソール上でコマンドを実行できます。使用できるコマンドは{allow_cmd}です。",
+    "/backup ":"/backup [ワールド名] ワールドデータをバックアップします。ワールド名を省略した場合worldsをコピーします。サーバーを停止した状態で実行してください",
+    "/replace":"/replace <py file> によってbotのコードを置き換えます。",
+    "/ip     ":"サーバーのIPアドレスを表示します。"
 }
 send_help = "```\n"
 def make_send_help():
@@ -109,7 +129,32 @@ def make_send_help():
     send_help += "```"
 make_send_help()
 
-async def dircp_discord(src, dst, interaction: discord.Interaction, symlinks=False):
+async def is_administrator(interaction: discord.Interaction,logger: logging.Logger) -> bool:
+    if not interaction.user.guild_permissions.administrator:
+        logger.error('permission denied')
+        await interaction.response.send_message("管理者権限を持っていないため実行できません")
+        return False
+    return True
+
+#既にサーバが起動しているか
+async def is_running_server(interaction: discord.Interaction,logger: logging.Logger) -> bool:
+    global process
+    if process is not None:
+        logger.error('server is still running')
+        await interaction.response.send_message("サーバーが起動しているため実行できません")
+        return True
+    return False
+
+#サーバーが閉まっている状態か
+async def is_stopped_server(interaction: discord.Interaction,logger: logging.Logger) -> bool:
+    global process
+    if process is None:
+        logger.error('server is not running')
+        await interaction.response.send_message("サーバーが起動していないため実行できません")
+        return True
+    return False
+
+async def dircp_discord(src, dst, interaction: discord.Interaction, symlinks=False) -> None:
     global exist_files, copyed_files
     """
     src : コピー元dir
@@ -298,6 +343,8 @@ backup_logger = create_logger("backup")
 replace_logger = create_logger("replace")
 ip_logger = create_logger("ip")
 
+class ServerBootException(Exception):
+    pass
 
 
 async def put_logs(mean,message):
@@ -332,13 +379,10 @@ async def on_ready():
 @tree.command(name="start",description="サーバーを起動します")
 async def start(interaction: discord.Interaction):
     global process
-    if process is not None:
-        start_logger.error('server is already running')
-        await interaction.response.send_message("サーバーはすでに起動しています")
-        return
+    if await is_running_server(interaction,start_logger): return
     start_logger.info('server starting')
-    await interaction.response.send_message("サーバーを起動します")
     process = subprocess.Popen([server_path + server_name],shell=True,stdin=subprocess.PIPE,stdout=subprocess.PIPE,encoding="utf-8")
+    await interaction.response.send_message("サーバーを起動します")
     threading.Thread(target=server_logger,args=(process,deque())).start()
     new_activity = f"さーばーじっこう"
     await client.change_presence(activity=discord.Game(new_activity))
@@ -347,10 +391,10 @@ async def start(interaction: discord.Interaction):
 @tree.command(name="stop",description="サーバーを停止します")
 async def stop(interaction: discord.Interaction):
     global process
-    if process is None:
-        stop_logger.error('server is not running')
-        await interaction.response.send_message("サーバーは起動していません")
-        return
+    #管理者権限を要求
+    if not await is_administrator(interaction,stop_logger): return
+    #サーバー起動確認
+    if await is_stopped_server(interaction,stop_logger): return
     stop_logger.info('server stopping')
     await interaction.response.send_message("サーバーを停止します")
     process.stdin.write("stop\n")
@@ -362,10 +406,11 @@ async def stop(interaction: discord.Interaction):
 @tree.command(name="cmd",description="サーバーにマインクラフトコマンドを送信します")
 async def cmd(interaction: discord.Interaction,command:str):
     global is_back_discord,cmd_logs
-    if process is None:
-        cmd_logger.error('server is not running')
-        await interaction.response.send_message("サーバーは起動していません")
-        return
+    #管理者権限を要求
+    if not await is_administrator(interaction,cmd_logger): return
+    #サーバー起動確認
+    if await is_stopped_server(interaction,cmd_logger): return
+    #コマンドの利用許可確認
     if command.split()[0] not in allow_cmd:
         cmd_logger.error('unknown command : ' + command)
         await interaction.response.send_message("コマンドが存在しない、または許可されないコマンドです")
@@ -388,10 +433,10 @@ async def cmd(interaction: discord.Interaction,command:str):
 @tree.command(name="backup",description="ワールドデータをバックアップします")
 async def backup(interaction: discord.Interaction,world_name:str = "worlds"):
     global exist_files, copyed_files
-    if process is not None:
-        backup_logger.error('server is still running')
-        await interaction.response.send_message("サーバーが起動しているためバックアップできません")
-        return
+    #管理者権限を要求
+    if not await is_administrator(interaction,backup_logger): return
+    #サーバー起動確認
+    if await is_running_server(interaction,backup_logger): return
     backup_logger.info('backup started')
     await interaction.response.send_message("progress...\n")
     # discordにcopyed_files / exist_filesをプログレスバーで
@@ -401,15 +446,10 @@ async def backup(interaction: discord.Interaction,world_name:str = "worlds"):
 #/replace <py file>
 @tree.command(name="replace",description="このbotのコードを<py file>に置き換えます\nこのコマンドはbotを破壊する可能性があります")
 async def replace(interaction: discord.Interaction,py_file:discord.Attachment):
-    if process is not None:
-        replace_logger.error('server is still running')
-        await interaction.response.send_message("サーバーが起動しているため置き換えできません")
-        return
-    #実行者に管理者権限がなければreturn
-    if not interaction.user.guild_permissions.administrator:
-        replace_logger.error('permission denied')
-        await interaction.response.send_message("このコマンドを実行するには管理者権限が必要です")
-        return
+    #管理者権限を要求
+    if not await is_administrator(interaction,replace_logger): return
+    #サーバー起動確認
+    if await is_running_server(interaction,replace_logger): return
     replace_logger.info('replace started')
     # ファイルをすべて読み込む
     with open(temp_path + "\\new_source.py","w",encoding="utf-8") as f:
@@ -448,10 +488,10 @@ async def help(interaction: discord.Interaction):
 #/exit
 @tree.command(name="exit",description="botを終了します\nサーバーを停止してから実行してください")
 async def exit(interaction: discord.Interaction):
-    if process is not None:
-        exit_logger.error('server is still running')
-        await interaction.response.send_message("サーバーが起動しているため終了できません")
-        return
+    #管理者権限を要求
+    if not await is_administrator(interaction,exit_logger): return
+    #サーバが動いているなら終了
+    if await is_running_server(interaction,exit_logger): return
     await interaction.response.send_message("botを終了します...")
     exit_logger.info('exit')
     await client.close()

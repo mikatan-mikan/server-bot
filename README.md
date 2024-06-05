@@ -1,3 +1,5 @@
+# server-bot
+
 ## 用途
 
 mc serverをdiscord上から操作する用途。
@@ -15,11 +17,15 @@ mc serverをdiscord上から操作する用途。
 |cmd|マインクラフトサーバーに対してコマンドを送信します。このコマンドの実行には管理者権限が必要です。|
 |replace|server.pyを与えられた引数に置換します。このコマンドの実行には管理者権限が必要です。|
 
+これらコマンドの設定等は後述の使用方法を参照してください。
+
 ## 動作確認
 
 統合版 dedicated server にて動作確認をしています。
 
 java版でも恐らく使えるはず。。。
+
+恐らくという意味ではこのbotは/stopの際に標準入力にstopを入力していますが、その点を変更すれば他のゲームサーバ等でも利用できるはずです。。。
 
 ### 確認済み環境
 
@@ -37,17 +43,51 @@ requirements.txtを参照
 
 ## 使用方法
 
-server.pyをサーバー本体(exeまたはjar)と同階層に配置します。
+server.pyを任意の場所に配置します。
 
-この時、server.pyが存在する階層はrootでない必要があります。(何かのディレクトリの中に入れてください)これは、`../backup/`内にbackupが生成されるためです。
+ただしserver.exeやserver.jar本体が存在する階層はrootでない必要があります。(何かのディレクトリの中に入れてください)これは、`../backup/`内にbackupが生成されるためです。
 
-server.pyを開き`server_name = "bedrock_server.exe"`の`"bedrock_server.exe"`を自身のサーバーファイル名に変更します。
+後にserver.pyを起動すると`./.token`と`./.config`が生成されます。
 
-後にserver.pyを起動すると`./.token`が生成されるので、ここにbotのtokenを記述してください。
+./.tokenにbotのtokenを記述してください。
+
+./.configについては後述します。
 
 このとき同時に`update.py`が生成されますが、これは`/repalce`を実行するために必要なファイルです。
 
 token記述後にカレントディレクトリとserver.py/server.[exe/jar]が存在する階層が同じ状態で再度server.pyを起動すると正常に起動するはずです。このプログラムはserver.pyがサーバー本体を呼び出すためserver.[exe/jar]を自身で起動する必要はありません。
+
+### .config
+
+./configは初期生成では以下のような内容で構成されています。
+
+```json
+{
+    "allow": {
+        "ip": true
+    },
+    "server_path": str(path of server.py),
+    "allow_mccmd": [
+        "list",
+        "whitelist",
+        "tellraw",
+        "w",
+        "tell"
+    ],
+    "server_name": "bedrock_server.exe"
+}
+```
+
+|項目|説明|
+|---|---|
+|allow|各コマンドの実行を許可するかどうか。(現在は/ipにのみ実装されています)|
+|server_path|minecraft server本体のパス(例えば`D:\\a\\server.jar`に配置されていれば`D:\\a\\`)|
+|allow_mccmd|/cmdで実況を許可するmcコマンドのリスト|
+|server_name|minecraft server本体の名前|
+
+ただし、server_pathがserver.pyの存在するディレクトリと一致しない場合(server.[exe/jar]とserver.pyの階層が違う場合)にも/replaceを行うと新たなファイル群はserver.py下に生成されます。
+
+従ってserver.pyはサーバ本体と同じ改装に配置することを推奨します。
 
 ## 注意
 
