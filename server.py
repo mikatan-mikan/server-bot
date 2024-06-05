@@ -436,7 +436,7 @@ async def ip(interaction: discord.Interaction):
         await interaction.response.send_message("IPアドレスを取得できません")
         return
     ip_logger.info('get ip : ' + addr.text)
-    await interaction.response.send_message(addr.text)
+    await interaction.response.send_message("サーバーip : " + addr.text)
 
 
 #/help
