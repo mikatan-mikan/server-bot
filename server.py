@@ -23,14 +23,15 @@ print()
 #サーバープロセス
 process = None
 
-#現在のディレクトリ名を取得
-now_dir = os.path.basename(os.getcwd())
 
 #外部変数
 token = None
 temp_path = None 
 
+#現在のディレクトリ
 now_path = "\\".join(__file__.split("\\")[:-1])
+#現在のファイル(server.py)
+now_file = __file__.split("\\")[-1]
 
 def make_config():
     import json
@@ -50,6 +51,7 @@ try:
     allow_cmd = set(config["allow_mccmd"])
     server_name = config["server_name"]
     allow = {"ip":config["allow"]["ip"]}
+    now_dir = server_path.replace("/","\\").split("\\")[-2]
 except KeyError:
     print("config file is broken. please delete .config and try again.")
     while True:
@@ -64,7 +66,8 @@ do_init = False
 for i in args:
     arg = i.split("=")
     if arg[0] == "-init":
-        do_init = True
+        # do_init = True
+        pass
 
 #updateプログラムが存在しなければdropboxから./update.pyにコピーする
 if not os.path.exists(now_path + "\\" + "update.py") or do_init:
@@ -484,7 +487,7 @@ async def replace(interaction: discord.Interaction,py_file:discord.Attachment):
     channel_id = str(interaction.channel_id)
     replace_logger.info("call update.py")
     replace_logger.info('replace args : ' + msg_id + " " + channel_id)
-    os.execv(sys.executable,["python3",now_path + "\\" + "update.py",temp_path + "\\new_source.py",msg_id,channel_id])
+    os.execv(sys.executable,["python3",now_path + "\\" + "update.py",temp_path + "\\new_source.py",msg_id,channel_id,now_file])
 
 #/ip
 @tree.command(name="ip",description="サーバーのIPアドレスを表示します")
