@@ -19,6 +19,7 @@ import requests
 
 
 
+
 #プロンプトを送る
 print()
 
@@ -32,14 +33,16 @@ now_dir = os.path.basename(os.getcwd())
 token = None
 temp_path = None 
 
+now_path = "\\".join(__file__.split("\\")[:-1])
+
 def make_config():
     import json
-    if not os.path.exists(os.getcwd() + "\\" + ".config"):
-        file = open(os.getcwd() + "\\"  + ".config","w")
-        config_dict = {"allow":{"ip":True},"server_path":os.getcwd() + "\\","allow_mccmd":["list","whitelist","tellraw","w","tell"],"server_name":"bedrock_server.exe"}
+    if not os.path.exists(now_path + "\\" + ".config"):
+        file = open(now_path + "\\"  + ".config","w")
+        config_dict = {"allow":{"ip":True},"server_path":now_path + "\\","allow_mccmd":["list","whitelist","tellraw","w","tell"],"server_name":"bedrock_server.exe"}
         json.dump(config_dict,file,indent=4)
     else:
-        config_dict = json.load(open(os.getcwd() + "\\"  + ".config","r"))
+        config_dict = json.load(open(now_path + "\\"  + ".config","r"))
     return config_dict
 
 
@@ -54,9 +57,9 @@ except KeyError:
     exit("config file is broken. please delete .config and try again.")
 
 #updateプログラムが存在しなければdropboxから./update.pyにコピーする
-if not os.path.exists(server_path + "update.py"):
+if not os.path.exists(now_path + "\\" + "update.py"):
     url='https://www.dropbox.com/scl/fi/w93o5sndwaiuie0otorm4/update.py?rlkey=gh3gqbt39iwg4afey11p99okp&st=2i9a9dzp&dl=1'
-    filename='./update.py'
+    filename= now_path + '\\' + '/update.py'
 
     urlData = requests.get(url).content
 
@@ -66,23 +69,24 @@ if not os.path.exists(server_path + "update.py"):
 
 def make_logs_file():
     #./logsが存在しなければlogsを作成する
-    if not os.path.exists(server_path + "logs"):
-        os.mkdir(server_path + "logs")
+    if not os.path.exists(now_path + "\\" + "logs"):
+        os.mkdir(now_path + "\\" + "logs")
 
 def make_token_file():
     global token
     #./.tokenが存在しなければ.tokenを作成する
-    if not os.path.exists(server_path + ".token"):
-        file = open(server_path + ".token","w",encoding="utf-8")
+    if not os.path.exists(now_path + "\\" + ".token"):
+        file = open(now_path + "\\" + ".token","w",encoding="utf-8")
         file.write("ここにtokenを入力")
         file.close()
-        print("トークンを./.tokenに入力してください")
+        print("トークンを" + now_path + "\\" +"\.tokenに書き込んでください")
         #ブロッキングする
         while True:
             pass
     #存在するならtokenを読み込む(json形式)
     else:
-        token = open(server_path + ".token","r").read()
+        token = open(now_path + "\\" + ".token","r",encoding="utf-8").read()
+        print("トークンを" + now_path + "\\" +"\.tokenから読み込みました")
 
 def make_temp():
     global temp_path
@@ -466,7 +470,7 @@ async def replace(interaction: discord.Interaction,py_file:discord.Attachment):
     channel_id = str(interaction.channel_id)
     replace_logger.info("call update.py")
     replace_logger.info('replace args : ' + msg_id + " " + channel_id)
-    os.execv(sys.executable,["python3",server_path + "update.py",temp_path + "\\new_source.py",msg_id,channel_id])
+    os.execv(sys.executable,["python3",now_path + "\\" + "update.py",temp_path + "\\new_source.py",msg_id,channel_id])
 
 #/ip
 @tree.command(name="ip",description="サーバーのIPアドレスを表示します")
