@@ -17,9 +17,6 @@ import sys
 import logging
 import requests
 
-
-
-
 #プロンプトを送る
 print()
 
@@ -56,10 +53,21 @@ try:
 except KeyError:
     exit("config file is broken. please delete .config and try again.")
 
+
+
+args = sys.argv[1:]
+do_init = False
+
+#引数を処理する。
+for i in args:
+    arg = i.split("=")
+    if arg[0] == "-init":
+        do_init = True
+
 #updateプログラムが存在しなければdropboxから./update.pyにコピーする
-if not os.path.exists(now_path + "\\" + "update.py"):
+if not os.path.exists(now_path + "\\" + "update.py") or do_init:
     url='https://www.dropbox.com/scl/fi/w93o5sndwaiuie0otorm4/update.py?rlkey=gh3gqbt39iwg4afey11p99okp&st=2i9a9dzp&dl=1'
-    filename= now_path + '\\' + '/update.py'
+    filename= now_path + '\\' + 'update.py'
 
     urlData = requests.get(url).content
 
@@ -79,14 +87,13 @@ def make_token_file():
         file = open(now_path + "\\" + ".token","w",encoding="utf-8")
         file.write("ここにtokenを入力")
         file.close()
-        print("トークンを" + now_path + "\\" +"\.tokenに書き込んでください")
+        print("トークンを" + now_path + "\\" +".tokenに書き込んでください")
         #ブロッキングする
         while True:
             pass
     #存在するならtokenを読み込む(json形式)
     else:
         token = open(now_path + "\\" + ".token","r",encoding="utf-8").read()
-        print("トークンを" + now_path + "\\" +"\.tokenから読み込みました")
 
 def make_temp():
     global temp_path
@@ -349,6 +356,9 @@ help_logger = create_logger("help")
 backup_logger = create_logger("backup")
 replace_logger = create_logger("replace")
 ip_logger = create_logger("ip")
+sys_logger = create_logger("sys")
+
+sys_logger.info("read token file ->" + now_path + "\\" +".token")
 
 class ServerBootException(Exception):
     pass
@@ -451,7 +461,7 @@ async def backup(interaction: discord.Interaction,world_name:str = "worlds"):
     backup_logger.info('backup done')
 
 #/replace <py file>
-@tree.command(name="replace",description="このbotのコードを<py file>に置き換えます\nこのコマンドはbotを破壊する可能性があります")
+@tree.command(name="replace",description="このbotのコードを<py file>に置き換えます。このコマンドはbotを破壊する可能性があります。")
 async def replace(interaction: discord.Interaction,py_file:discord.Attachment):
     #管理者権限を要求
     if not await is_administrator(interaction,replace_logger): return
