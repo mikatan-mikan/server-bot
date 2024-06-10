@@ -108,7 +108,6 @@ if platform.system() == 'Windows':
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 #/cmdに関する定数
-allow_cmd = set(["list","whitelist","tellraw","w","tell"])
 cmd_logs = deque(maxlen=100)
 
 
