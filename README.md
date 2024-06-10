@@ -1,5 +1,11 @@
 # server-bot
 
+## 最初に
+
+以前のバージョンを利用中で新たなバージョンに更新する方は最下部に存在する"更新履歴"の"最後の破壊的変更"を確認してください。また、更新時には/replaceを用いて最新のserver.pyファイルに置き換えてください。
+
+確認や/replaceでの更新が面倒な場合はこれまでの.configや.token、update.pyを削除してから新たなバージョンを起動してください。
+
 ## 用途
 
 mc serverをdiscord上から操作する用途。
@@ -47,15 +53,15 @@ server.pyを任意の場所に配置します。(推奨ディレクトリは実�
 
 ただしserver.exeやserver.jar本体が存在する階層はrootでない必要があります。(何かのディレクトリの中に入れてください)これは、`../backup/`内にbackupが生成されるためです。
 
-後にserver.pyを起動すると`./.token`と`./.config`が生成されます。
+後にserver.pyを起動するとserver.pyと同じ階層に`.token`と`.config`が生成されます。
 
-./.tokenにbotのtokenを記述してください。
+.tokenにbotのtokenを記述してください。
 
-./.configについては後述します。
+.configについては後述します。
 
 このとき同時に`update.py`が生成されますが、これは`/repalce`を実行するために必要なファイルです。
 
-token記述後にカレントディレクトリとserver.py/server.[exe/jar]が存在する階層が同じ状態で再度server.pyを起動すると正常に起動するはずです。このプログラムはserver.pyがサーバー本体を呼び出すためserver.[exe/jar]を自身で起動する必要はありません。
+tokenを記述し、configのserver_pathにserver.[exe/jar]へのパスを記述後に再度server.pyを起動すると正常に起動するはずです。このプログラムはserver.pyがサーバー本体を呼び出すためserver.[exe/jar]を自身で起動する必要はありません。
 
 ### .config
 
@@ -110,3 +116,23 @@ token記述後にカレントディレクトリとserver.py/server.[exe/jar]が�
 ## 免責事項
 
 本プログラムのインストール/実行/その他本プログラムが影響する挙動全てにおいて、生じた損害や不具合には作者は一切の責任を負わないものとします。
+
+## 更新履歴
+
+### 最後の破壊的変更
+
+破壊的変更とは既存のupdate.py等を変更する必要がある変更を指します。
+
+2024/06/10 更新前にupdate.pyの削除が必要です。6/10以前のserver.pyを利用している場合はupdate.pyを削除してください。
+
+今後の更新ではupdate.pyを自動更新するように変更しています。
+
+### 2024/06/10 ファイル階層の変更/update.pyの更新
+
+・update.pyが更新されました
+
+既存のupdate.pyを削除してserver.pyを起動してください。
+
+・configファイルやtokenファイルが生成される場所がserver.pyと同じディレクトリに変更されました。
+
+このアップデート後のserver.pyを利用するには以前の.config等が存在するserver.[exe/jar]に配置するか、任意のディレクトリに配置し再度tokenとconfigをコピーしてください。
