@@ -51,7 +51,9 @@ try:
     server_name = config["server_name"]
     allow = {"ip":config["allow"]["ip"]}
 except KeyError:
-    exit("config file is broken. please delete .config and try again.")
+    print("config file is broken. please delete .config and try again.")
+    while True:
+        pass
 
 
 
@@ -358,7 +360,9 @@ replace_logger = create_logger("replace")
 ip_logger = create_logger("ip")
 sys_logger = create_logger("sys")
 
-sys_logger.info("read token file ->" + now_path + "\\" +".token")
+sys_logger.info("read token file -> " + now_path + "\\" +".token")
+sys_logger.info("read config file -> " + now_path + "\\" +".config")
+sys_logger.info("config -> " + str(config))
 
 class ServerBootException(Exception):
     pass
