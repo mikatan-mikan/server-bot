@@ -127,6 +127,10 @@ tokenを記述し、configのserver_pathにserver.[exe/jar]へのパスを記述
 
 今後の更新ではupdate.pyを自動更新するように変更しています。
 
+### 2024/06/10 ファイル名を変更可能に
+
+・server.pyの名前を変更しても`/replace`が正常に動作するようになりました。
+
 ### 2024/06/10 ファイル階層の変更/update.pyの更新
 
 ・update.pyが更新されました
