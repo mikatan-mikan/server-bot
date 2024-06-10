@@ -73,10 +73,13 @@ def make_token_file():
     global token
     #./.tokenが存在しなければ.tokenを作成する
     if not os.path.exists(server_path + ".token"):
-        file = open(server_path + ".token","w")
+        file = open(server_path + ".token","w",encoding="utf-8")
         file.write("ここにtokenを入力")
         file.close()
-        exit("トークンを./.tokenに入力してください")
+        print("トークンを./.tokenに入力してください")
+        #ブロッキングする
+        while True:
+            pass
     #存在するならtokenを読み込む(json形式)
     else:
         token = open(server_path + ".token","r").read()
