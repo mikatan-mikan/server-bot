@@ -66,8 +66,8 @@ do_init = False
 for i in args:
     arg = i.split("=")
     if arg[0] == "-init":
-        # do_init = True
-        pass
+        do_init = True
+        # pass
 
 #updateプログラムが存在しなければdropboxから./update.pyにコピーする
 if not os.path.exists(now_path + "\\" + "update.py") or do_init:
