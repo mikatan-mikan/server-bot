@@ -17,46 +17,95 @@ import sys
 import logging
 import requests
 
-
-
 #プロンプトを送る
 print()
 
 #サーバープロセス
 process = None
 
-#現在のディレクトリ名を取得
-now_dir = os.path.basename(os.getcwd())
 
 #外部変数
 token = None
 temp_path = None 
 
+#現在のディレクトリ
+now_path = "\\".join(__file__.split("\\")[:-1])
+#現在のファイル(server.py)
+now_file = __file__.split("\\")[-1]
+
 def make_config():
     import json
-    if not os.path.exists(os.getcwd() + "\\" + ".config"):
-        file = open(os.getcwd() + "\\"  + ".config","w")
-        config_dict = {"allow":{"ip":True},"server_path":os.getcwd() + "\\","allow_mccmd":["list","whitelist","tellraw","w","tell"],"server_name":"bedrock_server.exe"}
+    if not os.path.exists(now_path + "\\" + ".config"):
+        file = open(now_path + "\\"  + ".config","w")
+        config_dict = {"allow":{"ip":True},"server_path":now_path + "\\","allow_mccmd":["list","whitelist","tellraw","w","tell"],"server_name":"bedrock_server.exe","log":{"server":True,"all":False}}
         json.dump(config_dict,file,indent=4)
     else:
-        config_dict = json.load(open(os.getcwd() + "\\"  + ".config","r"))
-    return config_dict
+        try:
+            config_dict = json.load(open(now_path + "\\"  + ".config","r"))
+        except json.decoder.JSONDecodeError:
+            print("config file is broken. please delete .config and try again.")
+            while True: pass
+        #要素がそろっているかのチェック
+        def check(cfg):
+            if "allow" not in cfg:
+                cfg["allow"] = {"ip":True}
+            elif "ip" not in cfg["allow"]:
+                cfg["allow"]["ip"] = True
+            if "server_path" not in cfg:
+                cfg["server_path"] = now_path + "\\"
+            if "allow_mccmd" not in cfg:
+                cfg["allow_mccmd"] = ["list","whitelist","tellraw","w","tell"]
+            if "server_name" not in cfg:
+                cfg["server_name"] = "bedrock_server.exe"
+            if "log" not in cfg:
+                cfg["log"] = {"server":True,"all":False}
+            else:
+                if "server" not in cfg["log"]:
+                    cfg["log"]["server"] = True
+                if "all" not in cfg["log"]:
+                    cfg["log"]["all"] = False
+            return cfg
+        if config_dict != check(config_dict.copy()):
+            check(config_dict)
+            file = open(now_path + "\\"  + ".config","w")
+            #ログ
+            config_changed = True
+            json.dump(config_dict,file,indent=4)
+            file.close()
+        else: config_changed = False
+    return config_dict,config_changed
 
 
-config = make_config()
+config,config_changed = make_config()
 
+#configの読み込み
 try:
     server_path = config["server_path"]
     allow_cmd = set(config["allow_mccmd"])
     server_name = config["server_name"]
     allow = {"ip":config["allow"]["ip"]}
+    now_dir = server_path.replace("/","\\").split("\\")[-2]
 except KeyError:
-    exit("config file is broken. please delete .config and try again.")
+    print("config file is broken. please delete .config and try again.")
+    while True:
+        pass
+
+
+
+args = sys.argv[1:]
+do_init = False
+
+#引数を処理する。
+for i in args:
+    arg = i.split("=")
+    if arg[0] == "-init":
+        do_init = True
+        # pass
 
 #updateプログラムが存在しなければdropboxから./update.pyにコピーする
-if not os.path.exists(server_path + "update.py"):
+if not os.path.exists(now_path + "\\" + "update.py") or do_init:
     url='https://www.dropbox.com/scl/fi/w93o5sndwaiuie0otorm4/update.py?rlkey=gh3gqbt39iwg4afey11p99okp&st=2i9a9dzp&dl=1'
-    filename='./update.py'
+    filename= now_path + '\\' + 'update.py'
 
     urlData = requests.get(url).content
 
@@ -66,20 +115,23 @@ if not os.path.exists(server_path + "update.py"):
 
 def make_logs_file():
     #./logsが存在しなければlogsを作成する
-    if not os.path.exists(server_path + "logs"):
-        os.mkdir(server_path + "logs")
+    if not os.path.exists(now_path + "\\" + "logs"):
+        os.mkdir(now_path + "\\" + "logs")
 
 def make_token_file():
     global token
     #./.tokenが存在しなければ.tokenを作成する
-    if not os.path.exists(server_path + ".token"):
-        file = open(server_path + ".token","w")
+    if not os.path.exists(now_path + "\\" + ".token"):
+        file = open(now_path + "\\" + ".token","w",encoding="utf-8")
         file.write("ここにtokenを入力")
         file.close()
-        exit("トークンを./.tokenに入力してください")
+        print("トークンを" + now_path + "\\" +".tokenに書き込んでください")
+        #ブロッキングする
+        while True:
+            pass
     #存在するならtokenを読み込む(json形式)
     else:
-        token = open(server_path + ".token","r").read()
+        token = open(now_path + "\\" + ".token","r",encoding="utf-8").read()
 
 def make_temp():
     global temp_path
@@ -105,7 +157,6 @@ if platform.system() == 'Windows':
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 #/cmdに関する定数
-allow_cmd = set(["list","whitelist","tellraw","w","tell"])
 cmd_logs = deque(maxlen=100)
 
 
@@ -343,6 +394,12 @@ help_logger = create_logger("help")
 backup_logger = create_logger("backup")
 replace_logger = create_logger("replace")
 ip_logger = create_logger("ip")
+sys_logger = create_logger("sys")
+
+sys_logger.info("read token file -> " + now_path + "\\" +".token")
+sys_logger.info("read config file -> " + now_path + "\\" +".config")
+sys_logger.info("config -> " + str(config))
+if config_changed: sys_logger.info("added config because necessary elements were missing")
 
 class ServerBootException(Exception):
     pass
@@ -445,7 +502,7 @@ async def backup(interaction: discord.Interaction,world_name:str = "worlds"):
     backup_logger.info('backup done')
 
 #/replace <py file>
-@tree.command(name="replace",description="このbotのコードを<py file>に置き換えます\nこのコマンドはbotを破壊する可能性があります")
+@tree.command(name="replace",description="このbotのコードを<py file>に置き換えます。このコマンドはbotを破壊する可能性があります。")
 async def replace(interaction: discord.Interaction,py_file:discord.Attachment):
     #管理者権限を要求
     if not await is_administrator(interaction,replace_logger): return
@@ -464,7 +521,7 @@ async def replace(interaction: discord.Interaction,py_file:discord.Attachment):
     channel_id = str(interaction.channel_id)
     replace_logger.info("call update.py")
     replace_logger.info('replace args : ' + msg_id + " " + channel_id)
-    os.execv(sys.executable,["python3",server_path + "update.py",temp_path + "\\new_source.py",msg_id,channel_id])
+    os.execv(sys.executable,["python3",now_path + "\\" + "update.py",temp_path + "\\new_source.py",msg_id,channel_id,now_file])
 
 #/ip
 @tree.command(name="ip",description="サーバーのIPアドレスを表示します")
