@@ -628,9 +628,6 @@ async def exit(interaction: discord.Interaction):
 
 # discord.py用のロガーを取得して設定
 discord_logger = logging.getLogger('discord')
-discord_logger.setLevel(logging.INFO)
-console_handler = logging.StreamHandler()
-discord_logger.addHandler(console_handler)
 if log["all"]:
     file_handler = logging.FileHandler(now_path + "\\logs\\all " + time + ".log")
     file_handler.setFormatter(file_formatter)
