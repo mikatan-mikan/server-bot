@@ -81,6 +81,10 @@ tokenを記述し、configのserver_pathにserver.[exe/jar]へのパスを記述
         "tell"
     ],
     "server_name": "bedrock_server.exe"
+    "log": {
+        "server": true,
+        "all": false
+    }
 }
 ```
 
@@ -90,6 +94,7 @@ tokenを記述し、configのserver_pathにserver.[exe/jar]へのパスを記述
 |server_path|minecraft server本体のパス(例えば`D:\\a\\server.jar`に配置されていれば`D:\\a\\`)|
 |allow_mccmd|/cmdで実況を許可するmcコマンドのリスト|
 |server_name|minecraft server本体の名前|
+|log|各種ログを保存するか否か serverをtrueにするとmcサーバーの実行ログをmcserverと同じディレクトリに保存し、allをtrueにするとすべてのログをserver.pyと同じディレクトリに保存します|
 
 ただし、server_pathがserver.pyの存在するディレクトリと一致しない場合(server.[exe/jar]とserver.pyの階層が違う場合)にも/replaceを行うと新たなファイル群はserver.py下に生成されます。
 
@@ -126,6 +131,12 @@ tokenを記述し、configのserver_pathにserver.[exe/jar]へのパスを記述
 2024/06/10 更新前にupdate.pyの削除が必要です。6/10以前のserver.pyを利用している場合はupdate.pyを削除してください。
 
 今後の更新ではupdate.pyを自動更新するように変更しています。
+
+### 2024/06/12 ログの追加
+
+・サーバーログ以外のbotの実行ログを含んだログを保存できるようになりました。
+
+/replaceを実行すると.configファイルが更新されます。更新後のconfigファイルのlog.allをtrueにすることでオンにすることができます。現時点ではこれらのログファイルはserver.pyと同じディレクトリに配置されます。
 
 ### 2024/06/10 ファイル名を変更可能に
 
