@@ -84,6 +84,7 @@ try:
     allow_cmd = set(config["allow_mccmd"])
     server_name = config["server_name"]
     allow = {"ip":config["allow"]["ip"]}
+    log = config["log"]
     now_dir = server_path.replace("/","\\").split("\\")[-2]
 except KeyError:
     print("config file is broken. please delete .config and try again.")
@@ -401,21 +402,7 @@ sys_logger.info("read config file -> " + now_path + "\\" +".config")
 sys_logger.info("config -> " + str(config))
 if config_changed: sys_logger.info("added config because necessary elements were missing")
 
-class ServerBootException(Exception):
-    pass
-
-
-async def put_logs(mean,message):
-    decoration = Color.RESET
-    if mean == 'INFO':
-        decoration = Color.BOLD + Color.BLUE
-        space = "     "
-    elif mean == 'ERROR':
-        decoration = Color.BOLD + Color.RED
-        space = "    "
-    print(Color.BOLD + Color.BLACK + datetime.now().strftime('%Y-%m-%d %H:%M:%S'),end = " " + Color.RESET)
-    print(decoration + mean,end= space + Color.RESET)
-    print(message)
+class ServerBootException(Exception):pass
 
 @client.event
 async def on_ready():
@@ -425,7 +412,8 @@ async def on_ready():
     await client.change_presence(activity=discord.Game('さーばーきどう'))
     #server を実行する
     process = subprocess.Popen([server_path + server_name],shell=True,stdin=subprocess.PIPE,stdout=subprocess.PIPE,encoding="utf-8")
-    threading.Thread(target=server_logger,args=(process,deque())).start()
+    if log["server"]:
+        threading.Thread(target=server_logger,args=(process,deque())).start()
     ready_logger.info('server starting')
     # アクティビティを設定 
     new_activity = f"さーばーじっこう" 
@@ -441,7 +429,8 @@ async def start(interaction: discord.Interaction):
     start_logger.info('server starting')
     process = subprocess.Popen([server_path + server_name],shell=True,stdin=subprocess.PIPE,stdout=subprocess.PIPE,encoding="utf-8")
     await interaction.response.send_message("サーバーを起動します")
-    threading.Thread(target=server_logger,args=(process,deque())).start()
+    if log["server"]:
+        threading.Thread(target=server_logger,args=(process,deque())).start()
     new_activity = f"さーばーじっこう"
     await client.change_presence(activity=discord.Game(new_activity))
 
