@@ -120,6 +120,8 @@ def make_logs_file():
     #./logsが存在しなければlogsを作成する
     if not os.path.exists(now_path + "\\" + "logs"):
         os.mkdir(now_path + "\\" + "logs")
+    if not os.path.exists(server_path + "logs"):
+        os.mkdir(server_path + "logs")
 
 def make_token_file():
     global token
