@@ -23,6 +23,8 @@ print()
 #サーバープロセス
 process = None
 
+#起動した時刻
+time = datetime.now().strftime("%Y-%m-%d_%H_%M_%S")
 
 #外部変数
 token = None
@@ -266,8 +268,6 @@ async def dircp_discord(src, dst, interaction: discord.Interaction, symlinks=Fal
 #logger thread
 def server_logger(proc,ret):
     global process,is_back_discord
-
-    file = open(file = server_path + "logs\\" + datetime.now().strftime("%Y-%m-%d_%H_%M_%S") + ".log",mode = "w")
     while True:
         logs = proc.stdout.readline()
         #ログに\nが含まれない = プロセスが終了している
@@ -276,14 +276,17 @@ def server_logger(proc,ret):
         #ログが\nのみであれば不要
         if logs == "\n":
             continue
-        minecraft_logs(logs)
-        file.write(logs)
+        #後ろが\nなら削除
+        while True:
+            if logs[-1] != "\n":
+                break
+            logs = logs[:-1]
+        minecraft_logger.info(logs)
         if is_back_discord:
             cmd_logs.append(logs)
             is_back_discord = False
     ret.append("server closed")
     process = None
-    file.close()
 
 def minecraft_logs(message):
     msg_type = message.split(" ")
@@ -337,54 +340,140 @@ class Color(Enum):
             return other + self.value
         else:
             raise NotImplementedError
-        
-class ColoredFormatter(logging.Formatter):
-    # ANSI escape codes for colors
-    COLORS = {
-        'DEBUG': Color.BOLD + Color.WHITE,   # White
-        'INFO': Color.BOLD + Color.BLUE,    # Blue
-        'WARNING': Color.BOLD + Color.YELLOW, # Yellow
-        'ERROR': Color.BOLD + Color.RED,   # Red
-        'CRITICAL': Color.BOLD + Color.MAGENTA # Red background
-    }
-    RESET = '\033[0m'  # Reset color
-    BOLD_BLACK = Color.BOLD + Color.BLACK  # Bold Black
 
-    def format(self, record):
-        # Format the asctime
-        record.asctime = self.formatTime(record, self.datefmt)
-        bold_black_asctime = f"{self.BOLD_BLACK}{record.asctime}{self.RESET}"
+class Formatter():
+    levelname_size = 8
+    name_size = 10
+    class ColoredFormatter(logging.Formatter):
+        # ANSI escape codes for colors
+        COLORS = {
+            'DEBUG': Color.BOLD + Color.WHITE,   # White
+            'INFO': Color.BOLD + Color.BLUE,    # Blue
+            'WARNING': Color.BOLD + Color.YELLOW, # Yellow
+            'ERROR': Color.BOLD + Color.RED,   # Red
+            'CRITICAL': Color.BOLD + Color.MAGENTA # Red background
+        }
+        RESET = '\033[0m'  # Reset color
+        BOLD_BLACK = Color.BOLD + Color.BLACK  # Bold Black
+
+        def format(self, record):
+            # Format the asctime
+            record.asctime = self.formatTime(record, self.datefmt)
+            bold_black_asctime = f"{self.BOLD_BLACK}{record.asctime}{self.RESET}"
+            
+            # Adjust level name to be 8 characters long
+            original_levelname = record.levelname
+            padded_levelname = original_levelname.ljust(8)
+            original_name = record.name
+            padded_name = original_name.ljust(10)
+            
+            # Apply color to the level name only
+            color = self.COLORS.get(original_levelname, self.RESET)
+            colored_levelname = f"{color}{padded_levelname}{self.RESET}"
+            
+            # Get the formatted message
+            message = record.getMessage()
+            
+            # Create the final formatted message
+            formatted_message = f"{bold_black_asctime} {colored_levelname} {padded_name}: {message}"
+            
+            return formatted_message
+
+    class MinecraftFormatter(logging.Formatter):
         
-        # Adjust level name to be 8 characters long
-        original_levelname = record.levelname
-        padded_levelname = original_levelname.ljust(8)
-        original_name = record.name
-        padded_name = original_name.ljust(10)
+        # ANSI escape codes for colors
+        COLORS = {
+            'MC': Color.BOLD + Color.GREEN,   # Green
+        }
+        RESET = '\033[0m'  # Reset color
+        BOLD_BLACK = Color.BOLD + Color.BLACK  # Bold Black
+
+        def format(self, record):
+            # Format the asctime
+            record.asctime = self.formatTime(record, self.datefmt)
+            bold_black_asctime = f"{self.BOLD_BLACK}{record.asctime}{self.RESET}"
+            
+            # Apply color to the level name only
+            color = self.COLORS["MC"]
+            colored_levelname = f"{color}MC      {self.RESET}"
+            
+            # Get the formatted message
+            message = record.getMessage()
+            msg_type = message.split()
+            if len(msg_type) > 2:
+                msg_type = msg_type[2][:-1]
+            if msg_type == "INFO":
+                msg_color = Color.CYAN
+            elif msg_type == "ERROR":
+                msg_color = Color.RED
+            else:
+                msg_color = Color.RESET
+            message = msg_color + message + Color.RESET
+            
+            # Create the final formatted message
+            formatted_message = f"{bold_black_asctime} {colored_levelname} {message}"
+            
+            return formatted_message
+
+    class DefaultConsoleFormatter(logging.Formatter):
+        def format(self, record):
+            # Format the asctime
+            record.asctime = self.formatTime(record, self.datefmt)
+            
+            # Adjust level name to be 8 characters long
+            original_levelname = record.levelname
+            padded_levelname = original_levelname.ljust(Formatter.levelname_size)
+            original_name = record.name
+            padded_name = original_name.ljust(Formatter.name_size)
+            
+            
+            # Get the formatted message
+            message = record.getMessage()
+            
+            # Create the final formatted message
+            formatted_message = f"{record.asctime} {padded_levelname} {padded_name}: {message}"
+            
+            return formatted_message
         
-        # Apply color to the level name only
-        color = self.COLORS.get(original_levelname, self.RESET)
-        colored_levelname = f"{color}{padded_levelname}{self.RESET}"
-        
-        # Get the formatted message
-        message = record.getMessage()
-        
-        # Create the final formatted message
-        formatted_message = f"{bold_black_asctime} {colored_levelname} {padded_name}: {message}"
-        
-        return formatted_message
+    class MinecraftConsoleFormatter(logging.Formatter):
+        def format(self, record):
+            # Format the asctime
+            record.asctime = self.formatTime(record, self.datefmt)
+            
+            padded_levelname = "MC".ljust(Formatter.levelname_size)
+            
+            
+            # Get the formatted message
+            message = record.getMessage()
+            
+            # Create the final formatted message
+            formatted_message = f"{record.asctime} {padded_levelname} {message}"
+            
+            return formatted_message
+
 
 #logger
 dt_fmt = '%Y-%m-%d %H:%M:%S'
-formatter = ColoredFormatter(f'{Color.BOLD + Color.BG_BLACK}%(asctime)s %(levelname)s %(name)s: %(message)s', dt_fmt)
-def create_logger(name):
+console_formatter = Formatter.ColoredFormatter(f'{Color.BOLD + Color.BG_BLACK}%(asctime)s %(levelname)s %(name)s: %(message)s', dt_fmt)
+file_formatter = Formatter.DefaultConsoleFormatter('%(asctime)s %(levelname)s %(name)s: %(message)s', dt_fmt)
+def create_logger(name,console_formatter=console_formatter,file_formatter=file_formatter):
 
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.DEBUG)
-    ch.setFormatter(formatter)
-    logger.addHandler(ch)
+    console = logging.StreamHandler()
+    console.setLevel(logging.DEBUG)
+    console.setFormatter(console_formatter)
+    logger.addHandler(console)
+    if log["all"]:
+        f = time + ".log"
+        file = logging.FileHandler(now_path + "\\logs\\" + f)
+        file.setLevel(logging.DEBUG)
+        file.setFormatter(file_formatter)
+        logger.addHandler(file)
     return logger
+
+#ロガーの作成
+logger_name = ["stop", "start", "exit", "ready", "cmd", "help", "backup", "replace", "ip", "sys"]
 
 stop_logger = create_logger("stop")
 start_logger = create_logger("start")
@@ -396,7 +485,37 @@ backup_logger = create_logger("backup")
 replace_logger = create_logger("replace")
 ip_logger = create_logger("ip")
 sys_logger = create_logger("sys")
+minecraft_logger = create_logger("minecraft",Formatter.MinecraftFormatter(f'{Color.BOLD + Color.BG_BLACK}%(asctime)s %(levelname)s %(name)s: %(message)s', dt_fmt),Formatter.MinecraftConsoleFormatter('%(asctime)s %(levelname)s %(name)s: %(message)s', dt_fmt))
 
+#参照を残す
+log_file = None
+#ファイル保存関数の呼び出し/定義
+def bot_logger():
+    global log_file
+    # now_path + "\\logs" にファイルを作成
+    if now_path + "\\logs" not in sys.path: sys.path.append(now_path + "\\logs")
+    name = time + ".log"
+    log_file = open(now_path + "\\logs\\" + name,mode="a")
+    class Tee(object):
+        def __init__(self, *streams):
+            self.streams = streams
+        def write(self, data):
+            for stream in self.streams:
+                stream.write(data)
+                stream.flush()
+        def flush(self):
+            for stream in self.streams:
+                stream.flush()
+    original_stdout = sys.stdout
+    # Teeオブジェクトを作成し、sys.stdoutをそれにリダイレクト
+    sys.stdout = Tee(sys.stdout, log_file)
+    sys_logger.info("create log file -> " + now_path + "\\logs\\" + name)
+
+        
+
+if log["all"]: bot_logger()
+
+#ローカルファイルの読み込み結果出力
 sys_logger.info("read token file -> " + now_path + "\\" +".token")
 sys_logger.info("read config file -> " + now_path + "\\" +".config")
 sys_logger.info("config -> " + str(config))
@@ -412,8 +531,7 @@ async def on_ready():
     await client.change_presence(activity=discord.Game('さーばーきどう'))
     #server を実行する
     process = subprocess.Popen([server_path + server_name],shell=True,stdin=subprocess.PIPE,stdout=subprocess.PIPE,encoding="utf-8")
-    if log["server"]:
-        threading.Thread(target=server_logger,args=(process,deque())).start()
+    threading.Thread(target=server_logger,args=(process,deque())).start()
     ready_logger.info('server starting')
     # アクティビティを設定 
     new_activity = f"さーばーじっこう" 
@@ -429,8 +547,7 @@ async def start(interaction: discord.Interaction):
     start_logger.info('server starting')
     process = subprocess.Popen([server_path + server_name],shell=True,stdin=subprocess.PIPE,stdout=subprocess.PIPE,encoding="utf-8")
     await interaction.response.send_message("サーバーを起動します")
-    if log["server"]:
-        threading.Thread(target=server_logger,args=(process,deque())).start()
+    threading.Thread(target=server_logger,args=(process,deque())).start()
     new_activity = f"さーばーじっこう"
     await client.change_presence(activity=discord.Game(new_activity))
 
@@ -547,6 +664,15 @@ async def exit(interaction: discord.Interaction):
     exit_logger.info('exit')
     await client.close()
 
+# discord.py用のロガーを取得して設定
+discord_logger = logging.getLogger('discord')
+discord_logger.setLevel(logging.INFO)
+console_handler = logging.StreamHandler()
+discord_logger.addHandler(console_handler)
+if log["all"]:
+    file_handler = logging.FileHandler(now_path + "\\logs\\" + time + ".log")
+    file_handler.setFormatter(file_formatter)
+    discord_logger.addHandler(file_handler)
 
-client.run(token, log_formatter=formatter)
+client.run(token, log_formatter=console_formatter)
 
