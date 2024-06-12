@@ -37,15 +37,48 @@ def make_config():
     import json
     if not os.path.exists(now_path + "\\" + ".config"):
         file = open(now_path + "\\"  + ".config","w")
-        config_dict = {"allow":{"ip":True},"server_path":now_path + "\\","allow_mccmd":["list","whitelist","tellraw","w","tell"],"server_name":"bedrock_server.exe"}
+        config_dict = {"allow":{"ip":True},"server_path":now_path + "\\","allow_mccmd":["list","whitelist","tellraw","w","tell"],"server_name":"bedrock_server.exe","log":{"server":True,"all":False}}
         json.dump(config_dict,file,indent=4)
     else:
-        config_dict = json.load(open(now_path + "\\"  + ".config","r"))
-    return config_dict
+        try:
+            config_dict = json.load(open(now_path + "\\"  + ".config","r"))
+        except json.decoder.JSONDecodeError:
+            print("config file is broken. please delete .config and try again.")
+            while True: pass
+        #要素がそろっているかのチェック
+        def check(cfg):
+            if "allow" not in cfg:
+                cfg["allow"] = {"ip":True}
+            elif "ip" not in cfg["allow"]:
+                cfg["allow"]["ip"] = True
+            if "server_path" not in cfg:
+                cfg["server_path"] = now_path + "\\"
+            if "allow_mccmd" not in cfg:
+                cfg["allow_mccmd"] = ["list","whitelist","tellraw","w","tell"]
+            if "server_name" not in cfg:
+                cfg["server_name"] = "bedrock_server.exe"
+            if "log" not in cfg:
+                cfg["log"] = {"server":True,"all":False}
+            else:
+                if "server" not in cfg["log"]:
+                    cfg["log"]["server"] = True
+                if "all" not in cfg["log"]:
+                    cfg["log"]["all"] = False
+            return cfg
+        if config_dict != check(config_dict.copy()):
+            check(config_dict)
+            file = open(now_path + "\\"  + ".config","w")
+            #ログ
+            config_changed = True
+            json.dump(config_dict,file,indent=4)
+            file.close()
+        else: config_changed = False
+    return config_dict,config_changed
 
 
-config = make_config()
+config,config_changed = make_config()
 
+#configの読み込み
 try:
     server_path = config["server_path"]
     allow_cmd = set(config["allow_mccmd"])
@@ -366,6 +399,7 @@ sys_logger = create_logger("sys")
 sys_logger.info("read token file -> " + now_path + "\\" +".token")
 sys_logger.info("read config file -> " + now_path + "\\" +".config")
 sys_logger.info("config -> " + str(config))
+if config_changed: sys_logger.info("added config because necessary elements were missing")
 
 class ServerBootException(Exception):
     pass
