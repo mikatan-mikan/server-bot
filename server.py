@@ -267,7 +267,8 @@ async def dircp_discord(src, dst, interaction: discord.Interaction, symlinks=Fal
 
 #logger thread
 def server_logger(proc,ret):
-    global process,is_back_discord
+    global process,is_back_discord 
+    file = open(file = server_path + "logs\\server " + datetime.now().strftime("%Y-%m-%d_%H_%M_%S") + ".log",mode = "w")
     while True:
         logs = proc.stdout.readline()
         #ログに\nが含まれない = プロセスが終了している
@@ -282,25 +283,14 @@ def server_logger(proc,ret):
                 break
             logs = logs[:-1]
         minecraft_logger.info(logs)
+        if log["server"]:
+            file.write(logs + "\n")
+            file.flush()
         if is_back_discord:
             cmd_logs.append(logs)
             is_back_discord = False
     ret.append("server closed")
     process = None
-
-def minecraft_logs(message):
-    msg_type = message.split(" ")
-    if len(msg_type) >= 3:
-        msg_type = msg_type[2][:-1]
-    msg_color = Color.RESET
-    if msg_type == "INFO":
-        msg_color = Color.CYAN
-    elif msg_type == "ERROR":
-        msg_color = Color.RED
-    decoration = Color.BOLD + Color.GREEN
-    print(Color.BOLD + Color.BLACK + datetime.now().strftime('%Y-%m-%d %H:%M:%S'),end = " " + Color.RESET)
-    print(decoration + "MC",end= "       " + Color.RESET)
-    print(msg_color + message,end = "" + Color.RESET)
 
 class Color(Enum):
     BLACK          = '\033[30m'#(文字)黒
@@ -363,9 +353,9 @@ class Formatter():
             
             # Adjust level name to be 8 characters long
             original_levelname = record.levelname
-            padded_levelname = original_levelname.ljust(8)
+            padded_levelname = original_levelname.ljust(Formatter.levelname_size)
             original_name = record.name
-            padded_name = original_name.ljust(10)
+            padded_name = original_name.ljust(Formatter.name_size)
             
             # Apply color to the level name only
             color = self.COLORS.get(original_levelname, self.RESET)
@@ -466,7 +456,7 @@ def create_logger(name,console_formatter=console_formatter,file_formatter=file_f
     logger.addHandler(console)
     if log["all"]:
         f = time + ".log"
-        file = logging.FileHandler(now_path + "\\logs\\" + f)
+        file = logging.FileHandler(now_path + "\\logs\\all " + f)
         file.setLevel(logging.DEBUG)
         file.setFormatter(file_formatter)
         logger.addHandler(file)
@@ -486,34 +476,6 @@ replace_logger = create_logger("replace")
 ip_logger = create_logger("ip")
 sys_logger = create_logger("sys")
 minecraft_logger = create_logger("minecraft",Formatter.MinecraftFormatter(f'{Color.BOLD + Color.BG_BLACK}%(asctime)s %(levelname)s %(name)s: %(message)s', dt_fmt),Formatter.MinecraftConsoleFormatter('%(asctime)s %(levelname)s %(name)s: %(message)s', dt_fmt))
-
-#参照を残す
-log_file = None
-#ファイル保存関数の呼び出し/定義
-def bot_logger():
-    global log_file
-    # now_path + "\\logs" にファイルを作成
-    if now_path + "\\logs" not in sys.path: sys.path.append(now_path + "\\logs")
-    name = time + ".log"
-    log_file = open(now_path + "\\logs\\" + name,mode="a")
-    class Tee(object):
-        def __init__(self, *streams):
-            self.streams = streams
-        def write(self, data):
-            for stream in self.streams:
-                stream.write(data)
-                stream.flush()
-        def flush(self):
-            for stream in self.streams:
-                stream.flush()
-    original_stdout = sys.stdout
-    # Teeオブジェクトを作成し、sys.stdoutをそれにリダイレクト
-    sys.stdout = Tee(sys.stdout, log_file)
-    sys_logger.info("create log file -> " + now_path + "\\logs\\" + name)
-
-        
-
-if log["all"]: bot_logger()
 
 #ローカルファイルの読み込み結果出力
 sys_logger.info("read token file -> " + now_path + "\\" +".token")
@@ -670,7 +632,7 @@ discord_logger.setLevel(logging.INFO)
 console_handler = logging.StreamHandler()
 discord_logger.addHandler(console_handler)
 if log["all"]:
-    file_handler = logging.FileHandler(now_path + "\\logs\\" + time + ".log")
+    file_handler = logging.FileHandler(now_path + "\\logs\\all " + time + ".log")
     file_handler.setFormatter(file_formatter)
     discord_logger.addHandler(file_handler)
 
