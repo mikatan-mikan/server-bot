@@ -35,6 +35,8 @@ now_path = "\\".join(__file__.split("\\")[:-1])
 #現在のファイル(server.py)
 now_file = __file__.split("\\")[-1]
 
+
+
 def make_config():
     import json
     if not os.path.exists(now_path + "\\" + ".config"):
@@ -77,223 +79,13 @@ def make_config():
         else: config_changed = False
     return config_dict,config_changed
 
-
 config,config_changed = make_config()
-
-#configの読み込み
 try:
-    server_path = config["server_path"]
-    allow_cmd = set(config["allow_mccmd"])
-    server_name = config["server_name"]
-    allow = {"ip":config["allow"]["ip"]}
     log = config["log"]
-    now_dir = server_path.replace("/","\\").split("\\")[-2]
 except KeyError:
-    print("config file is broken. please delete .config and try again.")
-    while True:
-        pass
+    print("log in config file is broken. please input true or false and try again.")
 
-
-
-args = sys.argv[1:]
-do_init = False
-
-#引数を処理する。
-for i in args:
-    arg = i.split("=")
-    if arg[0] == "-init":
-        do_init = True
-        # pass
-
-#updateプログラムが存在しなければdropboxから./update.pyにコピーする
-if not os.path.exists(now_path + "\\" + "update.py") or do_init:
-    url='https://www.dropbox.com/scl/fi/w93o5sndwaiuie0otorm4/update.py?rlkey=gh3gqbt39iwg4afey11p99okp&st=2i9a9dzp&dl=1'
-    filename= now_path + '\\' + 'update.py'
-
-    urlData = requests.get(url).content
-
-    with open(filename ,mode='wb') as f: # wb でバイト型を書き込める
-        f.write(urlData)
-    #os.system("curl https://www.dropbox.com/scl/fi/w93o5sndwaiuie0otorm4/update.py?rlkey=gh3gqbt39iwg4afey11p99okp&st=2i9a9dzp&dl=1 -o ./update.py")
-
-def make_logs_file():
-    #./logsが存在しなければlogsを作成する
-    if not os.path.exists(now_path + "\\" + "logs"):
-        os.mkdir(now_path + "\\" + "logs")
-    if not os.path.exists(server_path + "logs"):
-        os.mkdir(server_path + "logs")
-
-def make_token_file():
-    global token
-    #./.tokenが存在しなければ.tokenを作成する
-    if not os.path.exists(now_path + "\\" + ".token"):
-        file = open(now_path + "\\" + ".token","w",encoding="utf-8")
-        file.write("ここにtokenを入力")
-        file.close()
-        print("トークンを" + now_path + "\\" +".tokenに書き込んでください")
-        #ブロッキングする
-        while True:
-            pass
-    #存在するならtokenを読み込む(json形式)
-    else:
-        token = open(now_path + "\\" + ".token","r",encoding="utf-8").read()
-
-def make_temp():
-    global temp_path
-    #tempファイルの作成場所
-    if platform.system() == 'Windows':
-        # %temp%/mcserver を作成
-        temp_path = os.environ.get('TEMP') + "\\mcserver"
-    else:
-        # /tmp/mcserver を作成
-        temp_path = "/tmp/mcserver"
-
-    #tempファイルの作成
-    if not os.path.exists(temp_path):
-        os.mkdir(temp_path)
-
-
-make_logs_file()
-make_token_file()
-make_temp()
-
-#asyncioの制限を回避
-if platform.system() == 'Windows':
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-
-#/cmdに関する定数
-cmd_logs = deque(maxlen=100)
-
-
-#ログをdiscordにも返す可能性がある
-is_back_discord = False
-
-#help
-help_str = {
-    "/stop   ":"サーバーを停止します。但し起動していない場合にはエラーメッセージを返します。",
-    "/start  ":"サーバーを起動します。但し起動している場合にはエラーメッセージを返します。",
-    "/exit   ":"botを終了します。サーバーを停止してから実行してください。終了していない場合にはエラーメッセージを返します。\nまたこのコマンドを実行した場合次にbotが起動するまですべてのコマンドが無効になります。",
-    "/cmd    ":f"/cmd <mcコマンド>を用いてサーバーコンソール上でコマンドを実行できます。使用できるコマンドは{allow_cmd}です。",
-    "/backup ":"/backup [ワールド名] ワールドデータをバックアップします。ワールド名を省略した場合worldsをコピーします。サーバーを停止した状態で実行してください",
-    "/replace":"/replace <py file> によってbotのコードを置き換えます。",
-    "/ip     ":"サーバーのIPアドレスを表示します。"
-}
-send_help = "```\n"
-def make_send_help():
-    global send_help
-    for key in help_str:
-        send_help += key + " " + help_str[key] + "\n"
-    send_help += "```"
-make_send_help()
-
-async def is_administrator(interaction: discord.Interaction,logger: logging.Logger) -> bool:
-    if not interaction.user.guild_permissions.administrator:
-        logger.error('permission denied')
-        await interaction.response.send_message("管理者権限を持っていないため実行できません")
-        return False
-    return True
-
-#既にサーバが起動しているか
-async def is_running_server(interaction: discord.Interaction,logger: logging.Logger) -> bool:
-    global process
-    if process is not None:
-        logger.error('server is still running')
-        await interaction.response.send_message("サーバーが起動しているため実行できません")
-        return True
-    return False
-
-#サーバーが閉まっている状態か
-async def is_stopped_server(interaction: discord.Interaction,logger: logging.Logger) -> bool:
-    global process
-    if process is None:
-        logger.error('server is not running')
-        await interaction.response.send_message("サーバーが起動していないため実行できません")
-        return True
-    return False
-
-async def dircp_discord(src, dst, interaction: discord.Interaction, symlinks=False) -> None:
-    global exist_files, copyed_files
-    """
-    src : コピー元dir
-    dst : コピー先dir
-    symlinks : リンクをコピーするか
-    """
-    #表示サイズ
-    bar_width = 30
-    #送信制限
-    max_send = 20
-    dst += datetime.now().strftime('%Y-%m-%d_%H_%M_%S')
-    exist_files = 0
-    for root, dirs, files in os.walk(top=src, topdown=False):
-        exist_files += len(files)
-    #何ファイルおきにdiscordへ送信するか(最大100回送信するようにする)
-    send_sens = int(exist_files / max_send) if exist_files > max_send else 1
-    copyed_files = 0
-    async def copytree(src, dst, symlinks=False):
-        global copyed_files
-        names = os.listdir(src)
-        os.makedirs(dst)
-        errors = []
-        for name in names:
-            srcname = os.path.join(src, name)
-            dstname = os.path.join(dst, name)
-            try:
-                if symlinks and os.path.islink(srcname):
-                    linkto = os.readlink(srcname)
-                    os.symlink(linkto, dstname)
-                elif os.path.isdir(srcname):
-                    await copytree(srcname, dstname, symlinks)
-                else:
-                    copy2(srcname, dstname)
-                    copyed_files += 1
-                    if copyed_files % send_sens == 0 or copyed_files == exist_files:
-                        now = "バックアップ中・・・"
-                        if copyed_files == exist_files:
-                            now = "バックアップが完了しました！"
-                        await interaction.edit_original_response(content=f"{now}\n```{int((copyed_files / exist_files * bar_width) - 1) * '='}☆{((bar_width) - int(copyed_files / exist_files * bar_width)) * '-'}  ({'{: 5}'.format(copyed_files)} / {'{: 5}'.format(exist_files)}) {'{: 3.3f}'.format(copyed_files / exist_files * 100)}%```")
-            except OSError as why:
-                errors.append((srcname, dstname, str(why)))
-            # catch the Error from the recursive copytree so that we can
-            # continue with other files
-            except Error as err:
-                errors.extend(err.args[0])
-        try:
-            copystat(src, dst)
-        except OSError as why:
-            # can't copy file access times on Windows
-            if why.winerror is None:
-                errors.extend((src, dst, str(why)))
-        if errors:
-            raise Error(errors)
-    await copytree(src, dst, symlinks)
-
-#logger thread
-def server_logger(proc,ret):
-    global process,is_back_discord 
-    file = open(file = server_path + "logs\\server " + datetime.now().strftime("%Y-%m-%d_%H_%M_%S") + ".log",mode = "w")
-    while True:
-        logs = proc.stdout.readline()
-        #ログに\nが含まれない = プロセスが終了している
-        if "\n" not in logs:
-            break
-        #ログが\nのみであれば不要
-        if logs == "\n":
-            continue
-        #後ろが\nなら削除
-        while True:
-            if logs[-1] != "\n":
-                break
-            logs = logs[:-1]
-        minecraft_logger.info(logs)
-        if log["server"]:
-            file.write(logs + "\n")
-            file.flush()
-        if is_back_discord:
-            cmd_logs.append(logs)
-            is_back_discord = False
-    ret.append("server closed")
-    process = None
-
+#--------------------------------------------------------------------------------------------ログ関連
 class Color(Enum):
     BLACK          = '\033[30m'#(文字)黒
     RED            = '\033[31m'#(文字)赤
@@ -478,6 +270,229 @@ replace_logger = create_logger("replace")
 ip_logger = create_logger("ip")
 sys_logger = create_logger("sys")
 minecraft_logger = create_logger("minecraft",Formatter.MinecraftFormatter(f'{Color.BOLD + Color.BG_BLACK}%(asctime)s %(levelname)s %(name)s: %(message)s', dt_fmt),Formatter.MinecraftConsoleFormatter('%(asctime)s %(levelname)s %(name)s: %(message)s', dt_fmt))
+#--------------------------------------------------------------------------------------------
+
+
+#configの読み込み
+try:
+    server_path = config["server_path"]
+    if not os.path.exists(server_path):
+        sys_logger.error("not exist server_path dir")
+        while True: pass
+    allow_cmd = set(config["allow_mccmd"])
+    server_name = config["server_name"]
+    if not os.path.exists(server_path + server_name):
+        sys_logger.error("not exist server_name")
+        while True: pass
+    allow = {"ip":config["allow"]["ip"]}
+    log = config["log"]
+    now_dir = server_path.replace("/","\\").split("\\")[-2]
+except KeyError:
+    sys_logger.error("config file is broken. please delete .config and try again.")
+    while True:
+        pass
+
+
+
+args = sys.argv[1:]
+do_init = False
+
+#引数を処理する。
+for i in args:
+    arg = i.split("=")
+    if arg[0] == "-init":
+        do_init = True
+        # pass
+
+#updateプログラムが存在しなければdropboxから./update.pyにコピーする
+if not os.path.exists(now_path + "\\" + "update.py") or do_init:
+    url='https://www.dropbox.com/scl/fi/w93o5sndwaiuie0otorm4/update.py?rlkey=gh3gqbt39iwg4afey11p99okp&st=2i9a9dzp&dl=1'
+    filename= now_path + '\\' + 'update.py'
+
+    urlData = requests.get(url).content
+
+    with open(filename ,mode='wb') as f: # wb でバイト型を書き込める
+        f.write(urlData)
+    #os.system("curl https://www.dropbox.com/scl/fi/w93o5sndwaiuie0otorm4/update.py?rlkey=gh3gqbt39iwg4afey11p99okp&st=2i9a9dzp&dl=1 -o ./update.py")
+
+def make_logs_file():
+    #./logsが存在しなければlogsを作成する
+    if not os.path.exists(now_path + "\\" + "logs"):
+        os.mkdir(now_path + "\\" + "logs")
+    if not os.path.exists(server_path + "logs"):
+        os.mkdir(server_path + "logs")
+
+def make_token_file():
+    global token
+    #./.tokenが存在しなければ.tokenを作成する
+    if not os.path.exists(now_path + "\\" + ".token"):
+        file = open(now_path + "\\" + ".token","w",encoding="utf-8")
+        file.write("ここにtokenを入力")
+        file.close()
+        sys_logger.error("please write token in" + now_path + "\\" +".token")
+        #ブロッキングする
+        while True:
+            pass
+    #存在するならtokenを読み込む(json形式)
+    else:
+        token = open(now_path + "\\" + ".token","r",encoding="utf-8").read()
+
+def make_temp():
+    global temp_path
+    #tempファイルの作成場所
+    if platform.system() == 'Windows':
+        # %temp%/mcserver を作成
+        temp_path = os.environ.get('TEMP') + "\\mcserver"
+    else:
+        # /tmp/mcserver を作成
+        temp_path = "/tmp/mcserver"
+
+    #tempファイルの作成
+    if not os.path.exists(temp_path):
+        os.mkdir(temp_path)
+
+
+make_logs_file()
+make_token_file()
+make_temp()
+
+#asyncioの制限を回避
+if platform.system() == 'Windows':
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+#/cmdに関する定数
+cmd_logs = deque(maxlen=100)
+
+
+#ログをdiscordにも返す可能性がある
+is_back_discord = False
+
+#help
+help_str = {
+    "/stop   ":"サーバーを停止します。但し起動していない場合にはエラーメッセージを返します。",
+    "/start  ":"サーバーを起動します。但し起動している場合にはエラーメッセージを返します。",
+    "/exit   ":"botを終了します。サーバーを停止してから実行してください。終了していない場合にはエラーメッセージを返します。\nまたこのコマンドを実行した場合次にbotが起動するまですべてのコマンドが無効になります。",
+    "/cmd    ":f"/cmd <mcコマンド>を用いてサーバーコンソール上でコマンドを実行できます。使用できるコマンドは{allow_cmd}です。",
+    "/backup ":"/backup [ワールド名] ワールドデータをバックアップします。ワールド名を省略した場合worldsをコピーします。サーバーを停止した状態で実行してください",
+    "/replace":"/replace <py file> によってbotのコードを置き換えます。",
+    "/ip     ":"サーバーのIPアドレスを表示します。"
+}
+send_help = "```\n"
+def make_send_help():
+    global send_help
+    for key in help_str:
+        send_help += key + " " + help_str[key] + "\n"
+    send_help += "```"
+make_send_help()
+
+async def is_administrator(interaction: discord.Interaction,logger: logging.Logger) -> bool:
+    if not interaction.user.guild_permissions.administrator:
+        logger.error('permission denied')
+        await interaction.response.send_message("管理者権限を持っていないため実行できません")
+        return False
+    return True
+
+#既にサーバが起動しているか
+async def is_running_server(interaction: discord.Interaction,logger: logging.Logger) -> bool:
+    global process
+    if process is not None:
+        logger.error('server is still running')
+        await interaction.response.send_message("サーバーが起動しているため実行できません")
+        return True
+    return False
+
+#サーバーが閉まっている状態か
+async def is_stopped_server(interaction: discord.Interaction,logger: logging.Logger) -> bool:
+    global process
+    if process is None:
+        logger.error('server is not running')
+        await interaction.response.send_message("サーバーが起動していないため実行できません")
+        return True
+    return False
+
+async def dircp_discord(src, dst, interaction: discord.Interaction, symlinks=False) -> None:
+    global exist_files, copyed_files
+    """
+    src : コピー元dir
+    dst : コピー先dir
+    symlinks : リンクをコピーするか
+    """
+    #表示サイズ
+    bar_width = 30
+    #送信制限
+    max_send = 20
+    dst += datetime.now().strftime('%Y-%m-%d_%H_%M_%S')
+    exist_files = 0
+    for root, dirs, files in os.walk(top=src, topdown=False):
+        exist_files += len(files)
+    #何ファイルおきにdiscordへ送信するか(最大100回送信するようにする)
+    send_sens = int(exist_files / max_send) if exist_files > max_send else 1
+    copyed_files = 0
+    async def copytree(src, dst, symlinks=False):
+        global copyed_files
+        names = os.listdir(src)
+        os.makedirs(dst)
+        errors = []
+        for name in names:
+            srcname = os.path.join(src, name)
+            dstname = os.path.join(dst, name)
+            try:
+                if symlinks and os.path.islink(srcname):
+                    linkto = os.readlink(srcname)
+                    os.symlink(linkto, dstname)
+                elif os.path.isdir(srcname):
+                    await copytree(srcname, dstname, symlinks)
+                else:
+                    copy2(srcname, dstname)
+                    copyed_files += 1
+                    if copyed_files % send_sens == 0 or copyed_files == exist_files:
+                        now = "バックアップ中・・・"
+                        if copyed_files == exist_files:
+                            now = "バックアップが完了しました！"
+                        await interaction.edit_original_response(content=f"{now}\n```{int((copyed_files / exist_files * bar_width) - 1) * '='}☆{((bar_width) - int(copyed_files / exist_files * bar_width)) * '-'}  ({'{: 5}'.format(copyed_files)} / {'{: 5}'.format(exist_files)}) {'{: 3.3f}'.format(copyed_files / exist_files * 100)}%```")
+            except OSError as why:
+                errors.append((srcname, dstname, str(why)))
+            # catch the Error from the recursive copytree so that we can
+            # continue with other files
+            except Error as err:
+                errors.extend(err.args[0])
+        try:
+            copystat(src, dst)
+        except OSError as why:
+            # can't copy file access times on Windows
+            if why.winerror is None:
+                errors.extend((src, dst, str(why)))
+        if errors:
+            raise Error(errors)
+    await copytree(src, dst, symlinks)
+
+#logger thread
+def server_logger(proc,ret):
+    global process,is_back_discord 
+    file = open(file = server_path + "logs\\server " + datetime.now().strftime("%Y-%m-%d_%H_%M_%S") + ".log",mode = "w")
+    while True:
+        logs = proc.stdout.readline()
+        #ログに\nが含まれない = プロセスが終了している
+        if "\n" not in logs:
+            break
+        #ログが\nのみであれば不要
+        if logs == "\n":
+            continue
+        #後ろが\nなら削除
+        while True:
+            if logs[-1] != "\n":
+                break
+            logs = logs[:-1]
+        minecraft_logger.info(logs)
+        if log["server"]:
+            file.write(logs + "\n")
+            file.flush()
+        if is_back_discord:
+            cmd_logs.append(logs)
+            is_back_discord = False
+    ret.append("server closed")
+    process = None
+
 
 #ローカルファイルの読み込み結果出力
 sys_logger.info("read token file -> " + now_path + "\\" +".token")
