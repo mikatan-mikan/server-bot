@@ -23,6 +23,8 @@ print()
 #サーバープロセス
 process = None
 
+#起動した時刻
+time = datetime.now().strftime("%Y-%m-%d_%H_%M_%S")
 
 #外部変数
 token = None
@@ -37,20 +39,54 @@ def make_config():
     import json
     if not os.path.exists(now_path + "\\" + ".config"):
         file = open(now_path + "\\"  + ".config","w")
-        config_dict = {"allow":{"ip":True},"server_path":now_path + "\\","allow_mccmd":["list","whitelist","tellraw","w","tell"],"server_name":"bedrock_server.exe"}
+        config_dict = {"allow":{"ip":True},"server_path":now_path + "\\","allow_mccmd":["list","whitelist","tellraw","w","tell"],"server_name":"bedrock_server.exe","log":{"server":True,"all":False}}
         json.dump(config_dict,file,indent=4)
     else:
-        config_dict = json.load(open(now_path + "\\"  + ".config","r"))
-    return config_dict
+        try:
+            config_dict = json.load(open(now_path + "\\"  + ".config","r"))
+        except json.decoder.JSONDecodeError:
+            print("config file is broken. please delete .config and try again.")
+            while True: pass
+        #要素がそろっているかのチェック
+        def check(cfg):
+            if "allow" not in cfg:
+                cfg["allow"] = {"ip":True}
+            elif "ip" not in cfg["allow"]:
+                cfg["allow"]["ip"] = True
+            if "server_path" not in cfg:
+                cfg["server_path"] = now_path + "\\"
+            if "allow_mccmd" not in cfg:
+                cfg["allow_mccmd"] = ["list","whitelist","tellraw","w","tell"]
+            if "server_name" not in cfg:
+                cfg["server_name"] = "bedrock_server.exe"
+            if "log" not in cfg:
+                cfg["log"] = {"server":True,"all":False}
+            else:
+                if "server" not in cfg["log"]:
+                    cfg["log"]["server"] = True
+                if "all" not in cfg["log"]:
+                    cfg["log"]["all"] = False
+            return cfg
+        if config_dict != check(config_dict.copy()):
+            check(config_dict)
+            file = open(now_path + "\\"  + ".config","w")
+            #ログ
+            config_changed = True
+            json.dump(config_dict,file,indent=4)
+            file.close()
+        else: config_changed = False
+    return config_dict,config_changed
 
 
-config = make_config()
+config,config_changed = make_config()
 
+#configの読み込み
 try:
     server_path = config["server_path"]
     allow_cmd = set(config["allow_mccmd"])
     server_name = config["server_name"]
     allow = {"ip":config["allow"]["ip"]}
+    log = config["log"]
     now_dir = server_path.replace("/","\\").split("\\")[-2]
 except KeyError:
     print("config file is broken. please delete .config and try again.")
@@ -231,9 +267,8 @@ async def dircp_discord(src, dst, interaction: discord.Interaction, symlinks=Fal
 
 #logger thread
 def server_logger(proc,ret):
-    global process,is_back_discord
-
-    file = open(file = server_path + "logs\\" + datetime.now().strftime("%Y-%m-%d_%H_%M_%S") + ".log",mode = "w")
+    global process,is_back_discord 
+    file = open(file = server_path + "logs\\server " + datetime.now().strftime("%Y-%m-%d_%H_%M_%S") + ".log",mode = "w")
     while True:
         logs = proc.stdout.readline()
         #ログに\nが含まれない = プロセスが終了している
@@ -242,28 +277,20 @@ def server_logger(proc,ret):
         #ログが\nのみであれば不要
         if logs == "\n":
             continue
-        minecraft_logs(logs)
-        file.write(logs)
+        #後ろが\nなら削除
+        while True:
+            if logs[-1] != "\n":
+                break
+            logs = logs[:-1]
+        minecraft_logger.info(logs)
+        if log["server"]:
+            file.write(logs + "\n")
+            file.flush()
         if is_back_discord:
             cmd_logs.append(logs)
             is_back_discord = False
     ret.append("server closed")
     process = None
-    file.close()
-
-def minecraft_logs(message):
-    msg_type = message.split(" ")
-    if len(msg_type) >= 3:
-        msg_type = msg_type[2][:-1]
-    msg_color = Color.RESET
-    if msg_type == "INFO":
-        msg_color = Color.CYAN
-    elif msg_type == "ERROR":
-        msg_color = Color.RED
-    decoration = Color.BOLD + Color.GREEN
-    print(Color.BOLD + Color.BLACK + datetime.now().strftime('%Y-%m-%d %H:%M:%S'),end = " " + Color.RESET)
-    print(decoration + "MC",end= "       " + Color.RESET)
-    print(msg_color + message,end = "" + Color.RESET)
 
 class Color(Enum):
     BLACK          = '\033[30m'#(文字)黒
@@ -303,54 +330,140 @@ class Color(Enum):
             return other + self.value
         else:
             raise NotImplementedError
-        
-class ColoredFormatter(logging.Formatter):
-    # ANSI escape codes for colors
-    COLORS = {
-        'DEBUG': Color.BOLD + Color.WHITE,   # White
-        'INFO': Color.BOLD + Color.BLUE,    # Blue
-        'WARNING': Color.BOLD + Color.YELLOW, # Yellow
-        'ERROR': Color.BOLD + Color.RED,   # Red
-        'CRITICAL': Color.BOLD + Color.MAGENTA # Red background
-    }
-    RESET = '\033[0m'  # Reset color
-    BOLD_BLACK = Color.BOLD + Color.BLACK  # Bold Black
 
-    def format(self, record):
-        # Format the asctime
-        record.asctime = self.formatTime(record, self.datefmt)
-        bold_black_asctime = f"{self.BOLD_BLACK}{record.asctime}{self.RESET}"
+class Formatter():
+    levelname_size = 8
+    name_size = 10
+    class ColoredFormatter(logging.Formatter):
+        # ANSI escape codes for colors
+        COLORS = {
+            'DEBUG': Color.BOLD + Color.WHITE,   # White
+            'INFO': Color.BOLD + Color.BLUE,    # Blue
+            'WARNING': Color.BOLD + Color.YELLOW, # Yellow
+            'ERROR': Color.BOLD + Color.RED,   # Red
+            'CRITICAL': Color.BOLD + Color.MAGENTA # Red background
+        }
+        RESET = '\033[0m'  # Reset color
+        BOLD_BLACK = Color.BOLD + Color.BLACK  # Bold Black
+
+        def format(self, record):
+            # Format the asctime
+            record.asctime = self.formatTime(record, self.datefmt)
+            bold_black_asctime = f"{self.BOLD_BLACK}{record.asctime}{self.RESET}"
+            
+            # Adjust level name to be 8 characters long
+            original_levelname = record.levelname
+            padded_levelname = original_levelname.ljust(Formatter.levelname_size)
+            original_name = record.name
+            padded_name = original_name.ljust(Formatter.name_size)
+            
+            # Apply color to the level name only
+            color = self.COLORS.get(original_levelname, self.RESET)
+            colored_levelname = f"{color}{padded_levelname}{self.RESET}"
+            
+            # Get the formatted message
+            message = record.getMessage()
+            
+            # Create the final formatted message
+            formatted_message = f"{bold_black_asctime} {colored_levelname} {padded_name}: {message}"
+            
+            return formatted_message
+
+    class MinecraftFormatter(logging.Formatter):
         
-        # Adjust level name to be 8 characters long
-        original_levelname = record.levelname
-        padded_levelname = original_levelname.ljust(8)
-        original_name = record.name
-        padded_name = original_name.ljust(10)
+        # ANSI escape codes for colors
+        COLORS = {
+            'MC': Color.BOLD + Color.GREEN,   # Green
+        }
+        RESET = '\033[0m'  # Reset color
+        BOLD_BLACK = Color.BOLD + Color.BLACK  # Bold Black
+
+        def format(self, record):
+            # Format the asctime
+            record.asctime = self.formatTime(record, self.datefmt)
+            bold_black_asctime = f"{self.BOLD_BLACK}{record.asctime}{self.RESET}"
+            
+            # Apply color to the level name only
+            color = self.COLORS["MC"]
+            colored_levelname = f"{color}MC      {self.RESET}"
+            
+            # Get the formatted message
+            message = record.getMessage()
+            msg_type = message.split()
+            if len(msg_type) > 2:
+                msg_type = msg_type[2][:-1]
+            if msg_type == "INFO":
+                msg_color = Color.CYAN
+            elif msg_type == "ERROR":
+                msg_color = Color.RED
+            else:
+                msg_color = Color.RESET
+            message = msg_color + message + Color.RESET
+            
+            # Create the final formatted message
+            formatted_message = f"{bold_black_asctime} {colored_levelname} {message}"
+            
+            return formatted_message
+
+    class DefaultConsoleFormatter(logging.Formatter):
+        def format(self, record):
+            # Format the asctime
+            record.asctime = self.formatTime(record, self.datefmt)
+            
+            # Adjust level name to be 8 characters long
+            original_levelname = record.levelname
+            padded_levelname = original_levelname.ljust(Formatter.levelname_size)
+            original_name = record.name
+            padded_name = original_name.ljust(Formatter.name_size)
+            
+            
+            # Get the formatted message
+            message = record.getMessage()
+            
+            # Create the final formatted message
+            formatted_message = f"{record.asctime} {padded_levelname} {padded_name}: {message}"
+            
+            return formatted_message
         
-        # Apply color to the level name only
-        color = self.COLORS.get(original_levelname, self.RESET)
-        colored_levelname = f"{color}{padded_levelname}{self.RESET}"
-        
-        # Get the formatted message
-        message = record.getMessage()
-        
-        # Create the final formatted message
-        formatted_message = f"{bold_black_asctime} {colored_levelname} {padded_name}: {message}"
-        
-        return formatted_message
+    class MinecraftConsoleFormatter(logging.Formatter):
+        def format(self, record):
+            # Format the asctime
+            record.asctime = self.formatTime(record, self.datefmt)
+            
+            padded_levelname = "MC".ljust(Formatter.levelname_size)
+            
+            
+            # Get the formatted message
+            message = record.getMessage()
+            
+            # Create the final formatted message
+            formatted_message = f"{record.asctime} {padded_levelname} {message}"
+            
+            return formatted_message
+
 
 #logger
 dt_fmt = '%Y-%m-%d %H:%M:%S'
-formatter = ColoredFormatter(f'{Color.BOLD + Color.BG_BLACK}%(asctime)s %(levelname)s %(name)s: %(message)s', dt_fmt)
-def create_logger(name):
+console_formatter = Formatter.ColoredFormatter(f'{Color.BOLD + Color.BG_BLACK}%(asctime)s %(levelname)s %(name)s: %(message)s', dt_fmt)
+file_formatter = Formatter.DefaultConsoleFormatter('%(asctime)s %(levelname)s %(name)s: %(message)s', dt_fmt)
+def create_logger(name,console_formatter=console_formatter,file_formatter=file_formatter):
 
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.DEBUG)
-    ch.setFormatter(formatter)
-    logger.addHandler(ch)
+    console = logging.StreamHandler()
+    console.setLevel(logging.DEBUG)
+    console.setFormatter(console_formatter)
+    logger.addHandler(console)
+    if log["all"]:
+        f = time + ".log"
+        file = logging.FileHandler(now_path + "\\logs\\all " + f)
+        file.setLevel(logging.DEBUG)
+        file.setFormatter(file_formatter)
+        logger.addHandler(file)
     return logger
+
+#ロガーの作成
+logger_name = ["stop", "start", "exit", "ready", "cmd", "help", "backup", "replace", "ip", "sys"]
 
 stop_logger = create_logger("stop")
 start_logger = create_logger("start")
@@ -362,26 +475,15 @@ backup_logger = create_logger("backup")
 replace_logger = create_logger("replace")
 ip_logger = create_logger("ip")
 sys_logger = create_logger("sys")
+minecraft_logger = create_logger("minecraft",Formatter.MinecraftFormatter(f'{Color.BOLD + Color.BG_BLACK}%(asctime)s %(levelname)s %(name)s: %(message)s', dt_fmt),Formatter.MinecraftConsoleFormatter('%(asctime)s %(levelname)s %(name)s: %(message)s', dt_fmt))
 
+#ローカルファイルの読み込み結果出力
 sys_logger.info("read token file -> " + now_path + "\\" +".token")
 sys_logger.info("read config file -> " + now_path + "\\" +".config")
 sys_logger.info("config -> " + str(config))
+if config_changed: sys_logger.info("added config because necessary elements were missing")
 
-class ServerBootException(Exception):
-    pass
-
-
-async def put_logs(mean,message):
-    decoration = Color.RESET
-    if mean == 'INFO':
-        decoration = Color.BOLD + Color.BLUE
-        space = "     "
-    elif mean == 'ERROR':
-        decoration = Color.BOLD + Color.RED
-        space = "    "
-    print(Color.BOLD + Color.BLACK + datetime.now().strftime('%Y-%m-%d %H:%M:%S'),end = " " + Color.RESET)
-    print(decoration + mean,end= space + Color.RESET)
-    print(message)
+class ServerBootException(Exception):pass
 
 @client.event
 async def on_ready():
@@ -524,6 +626,15 @@ async def exit(interaction: discord.Interaction):
     exit_logger.info('exit')
     await client.close()
 
+# discord.py用のロガーを取得して設定
+discord_logger = logging.getLogger('discord')
+discord_logger.setLevel(logging.INFO)
+console_handler = logging.StreamHandler()
+discord_logger.addHandler(console_handler)
+if log["all"]:
+    file_handler = logging.FileHandler(now_path + "\\logs\\all " + time + ".log")
+    file_handler.setFormatter(file_formatter)
+    discord_logger.addHandler(file_handler)
 
-client.run(token, log_formatter=formatter)
+client.run(token, log_formatter=console_formatter)
 
