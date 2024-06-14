@@ -43,6 +43,7 @@ def wait_for_keypress():
             if msvcrt.kbhit():
                 msvcrt.getch()
                 break
+        exit()
     else:
         import sys
         import termios
@@ -54,6 +55,7 @@ def wait_for_keypress():
             sys.stdin.read(1)
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+            exit()
 
 def make_config():
     import json
