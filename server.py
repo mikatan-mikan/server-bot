@@ -63,6 +63,7 @@ def make_config():
         file = open(now_path + "\\"  + ".config","w")
         config_dict = {"allow":{"ip":True},"server_path":now_path + "\\","allow_mccmd":["list","whitelist","tellraw","w","tell"],"server_name":"bedrock_server.exe","log":{"server":True,"all":False}}
         json.dump(config_dict,file,indent=4)
+        config_changed = True
     else:
         try:
             config_dict = json.load(open(now_path + "\\"  + ".config","r"))
@@ -102,6 +103,15 @@ def make_config():
 config,config_changed = make_config()
 try:
     log = config["log"]
+    server_path = config["server_path"]
+    #ログファイルの作成
+    def make_logs_file():
+        #./logsが存在しなければlogsを作成する
+        if not os.path.exists(now_path + "\\" + "logs"):
+            os.mkdir(now_path + "\\" + "logs")
+        if not os.path.exists(server_path + "logs"):
+            os.mkdir(server_path + "logs")
+    make_logs_file()
 except KeyError:
     print("log in config file is broken. please input true or false and try again.")
 
@@ -334,12 +344,7 @@ if not os.path.exists(now_path + "\\" + "update.py") or do_init:
         f.write(urlData)
     #os.system("curl https://www.dropbox.com/scl/fi/w93o5sndwaiuie0otorm4/update.py?rlkey=gh3gqbt39iwg4afey11p99okp&st=2i9a9dzp&dl=1 -o ./update.py")
 
-def make_logs_file():
-    #./logsが存在しなければlogsを作成する
-    if not os.path.exists(now_path + "\\" + "logs"):
-        os.mkdir(now_path + "\\" + "logs")
-    if not os.path.exists(server_path + "logs"):
-        os.mkdir(server_path + "logs")
+
 
 def make_token_file():
     global token
@@ -370,7 +375,6 @@ def make_temp():
         os.mkdir(temp_path)
 
 
-make_logs_file()
 make_token_file()
 make_temp()
 
