@@ -35,7 +35,25 @@ now_path = "\\".join(__file__.split("\\")[:-1])
 #現在のファイル(server.py)
 now_file = __file__.split("\\")[-1]
 
-
+def wait_for_keypress():
+    print("please press any key to continue...")
+    if platform.system() == "Windows":
+        import msvcrt
+        while True:
+            if msvcrt.kbhit():
+                msvcrt.getch()
+                break
+    else:
+        import sys
+        import termios
+        import tty
+        fd = sys.stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
+        try:
+            tty.setraw(sys.stdin.fileno())
+            sys.stdin.read(1)
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 
 def make_config():
     import json
@@ -48,7 +66,7 @@ def make_config():
             config_dict = json.load(open(now_path + "\\"  + ".config","r"))
         except json.decoder.JSONDecodeError:
             print("config file is broken. please delete .config and try again.")
-            while True: pass
+            wait_for_keypress()
         #要素がそろっているかのチェック
         def check(cfg):
             if "allow" not in cfg:
@@ -278,19 +296,18 @@ try:
     server_path = config["server_path"]
     if not os.path.exists(server_path):
         sys_logger.error("not exist server_path dir")
-        while True: pass
+        wait_for_keypress()
     allow_cmd = set(config["allow_mccmd"])
     server_name = config["server_name"]
     if not os.path.exists(server_path + server_name):
         sys_logger.error("not exist server_name")
-        while True: pass
+        wait_for_keypress()
     allow = {"ip":config["allow"]["ip"]}
     log = config["log"]
     now_dir = server_path.replace("/","\\").split("\\")[-2]
 except KeyError:
     sys_logger.error("config file is broken. please delete .config and try again.")
-    while True:
-        pass
+    wait_for_keypress()
 
 
 
@@ -331,8 +348,7 @@ def make_token_file():
         file.close()
         sys_logger.error("please write token in" + now_path + "\\" +".token")
         #ブロッキングする
-        while True:
-            pass
+        wait_for_keypress()
     #存在するならtokenを読み込む(json形式)
     else:
         token = open(now_path + "\\" + ".token","r",encoding="utf-8").read()
