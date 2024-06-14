@@ -27,7 +27,7 @@ mc serverをdiscord上から操作する用途。
 
 ## 動作確認
 
-統合版 dedicated server にて動作確認をしています。
+統合版 dedicated server にて動作確認をしています(1.21で確認済み 2024/06/14)。
 
 java版でも恐らく使えるはず。。。
 
@@ -37,7 +37,7 @@ java版でも恐らく使えるはず。。。
 
 os : windows 11 version 23H2
 
-lang : python3.12.2
+lang : python3.12.2 / python 3.10.2
 
 ## 必要なもの
 
@@ -127,6 +127,14 @@ tokenを記述し、configのserver_pathにserver.[exe/jar]へのパスを記述
 2024/06/10 更新前にupdate.pyの削除が必要です。6/10以前のserver.pyを利用している場合はupdate.pyを削除してください。
 
 今後の更新ではupdate.pyを自動更新するように変更しています。
+
+### 2024/06/14 エラー修正
+
+・いくつかの問題を修正しました。
+
+エラー時にブロッキングをせずにキー入力を待つようになりました。
+
+server.[exe/jar]とserver.pyが同階層にない場合にupdate.pyがtokenを読み込めず実行できない問題を修正しました。
 
 ### 2024/06/12 ログの追加
 
