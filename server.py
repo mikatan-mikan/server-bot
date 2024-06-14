@@ -104,6 +104,9 @@ config,config_changed = make_config()
 try:
     log = config["log"]
     server_path = config["server_path"]
+    if not os.path.exists(server_path):
+        print("not exist server_path dir")
+        wait_for_keypress()
     #ログファイルの作成
     def make_logs_file():
         #./logsが存在しなければlogsを作成する
@@ -305,14 +308,10 @@ minecraft_logger = create_logger("minecraft",Formatter.MinecraftFormatter(f'{Col
 
 #configの読み込み
 try:
-    server_path = config["server_path"]
-    if not os.path.exists(server_path):
-        sys_logger.error("not exist server_path dir")
-        wait_for_keypress()
     allow_cmd = set(config["allow_mccmd"])
     server_name = config["server_name"]
     if not os.path.exists(server_path + server_name):
-        sys_logger.error("not exist server_name")
+        sys_logger.error("not exist " + server_path + server_name + " file. please check your config.")
         wait_for_keypress()
     allow = {"ip":config["allow"]["ip"]}
     log = config["log"]
