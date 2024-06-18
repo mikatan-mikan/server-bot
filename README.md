@@ -84,7 +84,8 @@ tokenを記述し、configのserver_pathにserver.[exe/jar]へのパスを記述
     "log": {
         "server": true,
         "all": false
-    }
+    },
+    "backup_path": str(path of backup)
 }
 ```
 
@@ -95,10 +96,9 @@ tokenを記述し、configのserver_pathにserver.[exe/jar]へのパスを記述
 |allow_mccmd|/cmdで実況を許可するmcコマンドのリスト|
 |server_name|minecraft server本体の名前|
 |log|各種ログを保存するか否か serverをtrueにするとmcサーバーの実行ログをmcserverと同じディレクトリに保存し、allをtrueにするとすべてのログをserver.pyと同じディレクトリに保存します|
+|backup_path|ワールドデータのバックアップパス(例えば`D:\\server\\backup`に保存したければ`D:\\server\\backup\\`)|
 
-ただし、server_pathがserver.pyの存在するディレクトリと一致しない場合(server.[exe/jar]とserver.pyの階層が違う場合)にも/replaceを行うと新たなファイル群はserver.py下に生成されます。
-
-従ってserver.pyはサーバ本体と同じ改装に配置することを推奨します。
+server.pyはサーバ本体と同じ改装に配置することを推奨します。
 
 ## 注意
 
@@ -127,6 +127,12 @@ tokenを記述し、configのserver_pathにserver.[exe/jar]へのパスを記述
 2024/06/10 更新前にupdate.pyの削除が必要です。6/10以前のserver.pyを利用している場合はupdate.pyを削除してください。
 
 今後の更新ではupdate.pyを自動更新するように変更しています。
+
+### 2024/06/18 backup pathをデータ駆動に
+
+・backup先を変更できるようになりました。
+
+.configにbackup_pathの項目が追加されました。
 
 ### 2024/06/14 エラー修正
 
