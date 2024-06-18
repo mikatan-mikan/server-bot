@@ -62,10 +62,11 @@ def make_config():
     if not os.path.exists(now_path + "\\" + ".config"):
         file = open(now_path + "\\"  + ".config","w")
         server_path = now_path
-        default_backup_path = server_path + "..\\backup\\" + server_path.split("\\")[-1] + "\\"
+        default_backup_path = server_path + "\\..\\backup\\" + server_path.split("\\")[-1]
         if not os.path.exists(default_backup_path):
             os.makedirs(default_backup_path)
-        default_backup_path = os.path.realpath(default_backup_path)
+        default_backup_path = os.path.realpath(default_backup_path) + "\\"
+        print("default backup path: " + default_backup_path)
         config_dict = {"allow":{"ip":True},"server_path":now_path + "\\","allow_mccmd":["list","whitelist","tellraw","w","tell"],"server_name":"bedrock_server.exe","log":{"server":True,"all":False},"backup_path": default_backup_path}
         json.dump(config_dict,file,indent=4)
         config_changed = True
@@ -103,8 +104,8 @@ def make_config():
                 if server_name == "":
                     print("server_path is broken. please check config file and try again.")
                     wait_for_keypress()
-                cfg["backup_path"] = cfg["server_path"] + "..\\backup\\" + server_name + "\\"
-                cfg["backup_path"] = os.path.realpath(cfg["backup_path"])
+                cfg["backup_path"] = cfg["server_path"] + "..\\backup\\" + server_name
+                cfg["backup_path"] = os.path.realpath(cfg["backup_path"]) + "\\"
                 if not os.path.exists(cfg["backup_path"]):
                     os.makedirs(cfg["backup_path"])
             return cfg
@@ -129,9 +130,9 @@ try:
     def make_logs_file():
         #./logsが存在しなければlogsを作成する
         if not os.path.exists(now_path + "\\" + "logs"):
-            os.mkdir(now_path + "\\" + "logs")
+            os.makedirs(now_path + "\\" + "logs")
         if not os.path.exists(server_path + "logs"):
-            os.mkdir(server_path + "logs")
+            os.makedirs(server_path + "logs")
     make_logs_file()
 except KeyError:
     print("(log or server_path) in config file is broken. please input true or false and try again.")
