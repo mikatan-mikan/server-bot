@@ -61,7 +61,13 @@ def make_config():
     import json
     if not os.path.exists(now_path + "\\" + ".config"):
         file = open(now_path + "\\"  + ".config","w")
-        config_dict = {"allow":{"ip":True},"server_path":now_path + "\\","allow_mccmd":["list","whitelist","tellraw","w","tell"],"server_name":"bedrock_server.exe","log":{"server":True,"all":False}}
+        server_path = now_path
+        default_backup_path = server_path + "\\..\\backup\\" + server_path.split("\\")[-1]
+        if not os.path.exists(default_backup_path):
+            os.makedirs(default_backup_path)
+        default_backup_path = os.path.realpath(default_backup_path) + "\\"
+        print("default backup path: " + default_backup_path)
+        config_dict = {"allow":{"ip":True},"server_path":now_path + "\\","allow_mccmd":["list","whitelist","tellraw","w","tell"],"server_name":"bedrock_server.exe","log":{"server":True,"all":False},"backup_path": default_backup_path}
         json.dump(config_dict,file,indent=4)
         config_changed = True
     else:
@@ -89,6 +95,19 @@ def make_config():
                     cfg["log"]["server"] = True
                 if "all" not in cfg["log"]:
                     cfg["log"]["all"] = False
+            if "backup_path" not in cfg:
+                try:
+                    server_name = cfg["server_path"].split("\\")[-2]
+                except IndexError:
+                    print(f"server_path is broken. please check config file and try again.\ninput : {cfg['server_path']}")
+                    wait_for_keypress()
+                if server_name == "":
+                    print("server_path is broken. please check config file and try again.")
+                    wait_for_keypress()
+                cfg["backup_path"] = cfg["server_path"] + "..\\backup\\" + server_name
+                cfg["backup_path"] = os.path.realpath(cfg["backup_path"]) + "\\"
+                if not os.path.exists(cfg["backup_path"]):
+                    os.makedirs(cfg["backup_path"])
             return cfg
         if config_dict != check(config_dict.copy()):
             check(config_dict)
@@ -111,12 +130,13 @@ try:
     def make_logs_file():
         #./logsが存在しなければlogsを作成する
         if not os.path.exists(now_path + "\\" + "logs"):
-            os.mkdir(now_path + "\\" + "logs")
+            os.makedirs(now_path + "\\" + "logs")
         if not os.path.exists(server_path + "logs"):
-            os.mkdir(server_path + "logs")
+            os.makedirs(server_path + "logs")
     make_logs_file()
 except KeyError:
-    print("log in config file is broken. please input true or false and try again.")
+    print("(log or server_path) in config file is broken. please input true or false and try again.")
+    wait_for_keypress()
 
 #--------------------------------------------------------------------------------------------ログ関連
 class Color(Enum):
@@ -316,6 +336,7 @@ try:
     allow = {"ip":config["allow"]["ip"]}
     log = config["log"]
     now_dir = server_path.replace("/","\\").split("\\")[-2]
+    backup_path = config["backup_path"]
 except KeyError:
     sys_logger.error("config file is broken. please delete .config and try again.")
     wait_for_keypress()
@@ -604,7 +625,7 @@ async def backup(interaction: discord.Interaction,world_name:str = "worlds"):
     backup_logger.info('backup started')
     await interaction.response.send_message("progress...\n")
     # discordにcopyed_files / exist_filesをプログレスバーで
-    await dircp_discord(server_path + world_name,server_path + "..\\backup\\" + now_dir + "\\",interaction)
+    await dircp_discord(server_path + world_name,backup_path + "\\",interaction)
     backup_logger.info('backup done')
 
 #/replace <py file>
