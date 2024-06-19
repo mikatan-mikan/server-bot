@@ -102,7 +102,7 @@ server.pyはサーバ本体と同じ改装に配置することを推奨しま�
 
 ### 動作状態
 
-![server.mp4](https://www.dropbox.com/scl/fi/rhhrxvm6ywn2d7a0aze5s/.mp4?rlkey=lbbt68z9ua3yymhxkvxh04snl&st=9ukn04ai&dl=0)
+![server.mp4](https://github.com/mikatan-mikan/server-bot/assets/78290592/9e2a1304-fb78-4965-b928-ff365aa54f28)
 
 ## 注意
 
