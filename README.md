@@ -102,7 +102,7 @@ server.pyはサーバ本体と同じ改装に配置することを推奨しま�
 
 ### 動作状態
 
-![server.mp4](https://github.com/mikatan-mikan/server-bot/assets/78290592/9e2a1304-fb78-4965-b928-ff365aa54f28)
+![from issue](https://github.com/mikatan-mikan/server-bot/assets/78290592/32df51eb-7166-40a8-b817-e1057d2aabd0)
 
 ## 注意
 
