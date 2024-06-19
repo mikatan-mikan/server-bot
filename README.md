@@ -100,6 +100,10 @@ tokenを記述し、configのserver_pathにserver.[exe/jar]へのパスを記述
 
 server.pyはサーバ本体と同じ改装に配置することを推奨します。
 
+### 動作状態
+
+![server.mp4](https://www.dropbox.com/scl/fi/rhhrxvm6ywn2d7a0aze5s/.mp4?rlkey=lbbt68z9ua3yymhxkvxh04snl&st=9ukn04ai&dl=0)
+
 ## 注意
 
 ~~このbotは見知らぬプレイヤーが多くいる状況下での使用を推奨していません。もしもそのような状況下で利用したい場合にはほとんどのコマンドに管理者権限のチェックを実装する必要があるでしょう。(但し誰でもコマンドを実行できる環境は後に改善する予定があります。)~~
