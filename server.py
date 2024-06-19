@@ -31,9 +31,11 @@ token = None
 temp_path = None 
 
 #現在のディレクトリ
-now_path = "\\".join(__file__.split("\\")[:-1])
+now_path = "/".join(__file__.replace("\\","/").split("/")[:-1])
+# 相対パス
+if now_path == "": now_path = "."
 #現在のファイル(server.py)
-now_file = __file__.split("\\")[-1]
+now_file = __file__.replace("\\","/").split("/")[-1]
 
 def wait_for_keypress():
     print("please press any key to continue...")
@@ -59,20 +61,20 @@ def wait_for_keypress():
 
 def make_config():
     import json
-    if not os.path.exists(now_path + "\\" + ".config"):
-        file = open(now_path + "\\"  + ".config","w")
+    if not os.path.exists(now_path + "/" + ".config"):
+        file = open(now_path + "/"  + ".config","w")
         server_path = now_path
-        default_backup_path = server_path + "\\..\\backup\\" + server_path.split("\\")[-1]
+        default_backup_path = server_path + "/../backup/" + server_path.split("/")[-1]
         if not os.path.exists(default_backup_path):
             os.makedirs(default_backup_path)
-        default_backup_path = os.path.realpath(default_backup_path) + "\\"
+        default_backup_path = os.path.realpath(default_backup_path) + "/"
         print("default backup path: " + default_backup_path)
-        config_dict = {"allow":{"ip":True},"server_path":now_path + "\\","allow_mccmd":["list","whitelist","tellraw","w","tell"],"server_name":"bedrock_server.exe","log":{"server":True,"all":False},"backup_path": default_backup_path}
+        config_dict = {"allow":{"ip":True},"server_path":now_path + "/","allow_mccmd":["list","whitelist","tellraw","w","tell"],"server_name":"bedrock_server.exe","log":{"server":True,"all":False},"backup_path": default_backup_path}
         json.dump(config_dict,file,indent=4)
         config_changed = True
     else:
         try:
-            config_dict = json.load(open(now_path + "\\"  + ".config","r"))
+            config_dict = json.load(open(now_path + "/"  + ".config","r"))
         except json.decoder.JSONDecodeError:
             print("config file is broken. please delete .config and try again.")
             wait_for_keypress()
@@ -83,7 +85,7 @@ def make_config():
             elif "ip" not in cfg["allow"]:
                 cfg["allow"]["ip"] = True
             if "server_path" not in cfg:
-                cfg["server_path"] = now_path + "\\"
+                cfg["server_path"] = now_path + "/"
             if "allow_mccmd" not in cfg:
                 cfg["allow_mccmd"] = ["list","whitelist","tellraw","w","tell"]
             if "server_name" not in cfg:
@@ -97,21 +99,21 @@ def make_config():
                     cfg["log"]["all"] = False
             if "backup_path" not in cfg:
                 try:
-                    server_name = cfg["server_path"].split("\\")[-2]
+                    server_name = cfg["server_path"].split("/")[-2]
                 except IndexError:
                     print(f"server_path is broken. please check config file and try again.\ninput : {cfg['server_path']}")
                     wait_for_keypress()
                 if server_name == "":
                     print("server_path is broken. please check config file and try again.")
                     wait_for_keypress()
-                cfg["backup_path"] = cfg["server_path"] + "..\\backup\\" + server_name
-                cfg["backup_path"] = os.path.realpath(cfg["backup_path"]) + "\\"
+                cfg["backup_path"] = cfg["server_path"] + "../backup/" + server_name
+                cfg["backup_path"] = os.path.realpath(cfg["backup_path"]) + "/"
                 if not os.path.exists(cfg["backup_path"]):
                     os.makedirs(cfg["backup_path"])
             return cfg
         if config_dict != check(config_dict.copy()):
             check(config_dict)
-            file = open(now_path + "\\"  + ".config","w")
+            file = open(now_path + "/"  + ".config","w")
             #ログ
             config_changed = True
             json.dump(config_dict,file,indent=4)
@@ -129,8 +131,8 @@ try:
     #ログファイルの作成
     def make_logs_file():
         #./logsが存在しなければlogsを作成する
-        if not os.path.exists(now_path + "\\" + "logs"):
-            os.makedirs(now_path + "\\" + "logs")
+        if not os.path.exists(now_path + "/" + "logs"):
+            os.makedirs(now_path + "/" + "logs")
         if not os.path.exists(server_path + "logs"):
             os.makedirs(server_path + "logs")
     make_logs_file()
@@ -303,7 +305,7 @@ def create_logger(name,console_formatter=console_formatter,file_formatter=file_f
     logger.addHandler(console)
     if log["all"]:
         f = time + ".log"
-        file = logging.FileHandler(now_path + "\\logs\\all " + f)
+        file = logging.FileHandler(now_path + "/logs/all " + f)
         file.setLevel(logging.DEBUG)
         file.setFormatter(file_formatter)
         logger.addHandler(file)
@@ -335,7 +337,7 @@ try:
         wait_for_keypress()
     allow = {"ip":config["allow"]["ip"]}
     log = config["log"]
-    now_dir = server_path.replace("/","\\").split("\\")[-2]
+    now_dir = server_path.replace("\\","/").split("/")[-2]
     backup_path = config["backup_path"]
 except KeyError:
     sys_logger.error("config file is broken. please delete .config and try again.")
@@ -354,9 +356,9 @@ for i in args:
         # pass
 
 #updateプログラムが存在しなければdropboxから./update.pyにコピーする
-if not os.path.exists(now_path + "\\" + "update.py") or do_init:
+if not os.path.exists(now_path + "/" + "update.py") or do_init:
     url='https://www.dropbox.com/scl/fi/w93o5sndwaiuie0otorm4/update.py?rlkey=gh3gqbt39iwg4afey11p99okp&st=2i9a9dzp&dl=1'
-    filename= now_path + '\\' + 'update.py'
+    filename= now_path + '/' + 'update.py'
 
     urlData = requests.get(url).content
 
@@ -369,23 +371,23 @@ if not os.path.exists(now_path + "\\" + "update.py") or do_init:
 def make_token_file():
     global token
     #./.tokenが存在しなければ.tokenを作成する
-    if not os.path.exists(now_path + "\\" + ".token"):
-        file = open(now_path + "\\" + ".token","w",encoding="utf-8")
+    if not os.path.exists(now_path + "/" + ".token"):
+        file = open(now_path + "/" + ".token","w",encoding="utf-8")
         file.write("ここにtokenを入力")
         file.close()
-        sys_logger.error("please write token in" + now_path + "\\" +".token")
+        sys_logger.error("please write token in" + now_path + "/" +".token")
         #ブロッキングする
         wait_for_keypress()
     #存在するならtokenを読み込む(json形式)
     else:
-        token = open(now_path + "\\" + ".token","r",encoding="utf-8").read()
+        token = open(now_path + "/" + ".token","r",encoding="utf-8").read()
 
 def make_temp():
     global temp_path
     #tempファイルの作成場所
     if platform.system() == 'Windows':
         # %temp%/mcserver を作成
-        temp_path = os.environ.get('TEMP') + "\\mcserver"
+        temp_path = os.environ.get('TEMP') + "/mcserver"
     else:
         # /tmp/mcserver を作成
         temp_path = "/tmp/mcserver"
@@ -511,7 +513,7 @@ async def dircp_discord(src, dst, interaction: discord.Interaction, symlinks=Fal
 #logger thread
 def server_logger(proc,ret):
     global process,is_back_discord 
-    file = open(file = server_path + "logs\\server " + datetime.now().strftime("%Y-%m-%d_%H_%M_%S") + ".log",mode = "w")
+    file = open(file = server_path + "logs/server " + datetime.now().strftime("%Y-%m-%d_%H_%M_%S") + ".log",mode = "w")
     while True:
         logs = proc.stdout.readline()
         #ログに\nが含まれない = プロセスが終了している
@@ -537,8 +539,8 @@ def server_logger(proc,ret):
 
 
 #ローカルファイルの読み込み結果出力
-sys_logger.info("read token file -> " + now_path + "\\" +".token")
-sys_logger.info("read config file -> " + now_path + "\\" +".config")
+sys_logger.info("read token file -> " + now_path + "/" +".token")
+sys_logger.info("read config file -> " + now_path + "/" +".config")
 sys_logger.info("config -> " + str(config))
 if config_changed: sys_logger.info("added config because necessary elements were missing")
 
@@ -551,7 +553,10 @@ async def on_ready():
     #サーバーの起動
     await client.change_presence(activity=discord.Game('さーばーきどう'))
     #server を実行する
-    process = subprocess.Popen([server_path + server_name],shell=True,stdin=subprocess.PIPE,stdout=subprocess.PIPE,encoding="utf-8")
+    if platform.system() == "Windows":
+        process = subprocess.Popen([server_path + server_name],shell=True,stdin=subprocess.PIPE,stdout=subprocess.PIPE,encoding="utf-8")
+    else:
+        process = subprocess.Popen([server_path + server_name],cwd=server_path,shell=True,stdin=subprocess.PIPE,stdout=subprocess.PIPE,encoding="utf-8")
     threading.Thread(target=server_logger,args=(process,deque())).start()
     ready_logger.info('server starting')
     # アクティビティを設定 
@@ -566,7 +571,10 @@ async def start(interaction: discord.Interaction):
     global process
     if await is_running_server(interaction,start_logger): return
     start_logger.info('server starting')
-    process = subprocess.Popen([server_path + server_name],shell=True,stdin=subprocess.PIPE,stdout=subprocess.PIPE,encoding="utf-8")
+    if platform.system() == "Windows":
+        process = subprocess.Popen([server_path + server_name],shell=True,stdin=subprocess.PIPE,stdout=subprocess.PIPE,encoding="utf-8")
+    else:
+        process = subprocess.Popen([server_path + server_name],cwd=server_path,shell=True,stdin=subprocess.PIPE,stdout=subprocess.PIPE,encoding="utf-8")
     await interaction.response.send_message("サーバーを起動します")
     threading.Thread(target=server_logger,args=(process,deque())).start()
     new_activity = f"さーばーじっこう"
@@ -625,7 +633,7 @@ async def backup(interaction: discord.Interaction,world_name:str = "worlds"):
     backup_logger.info('backup started')
     await interaction.response.send_message("progress...\n")
     # discordにcopyed_files / exist_filesをプログレスバーで
-    await dircp_discord(server_path + world_name,backup_path + "\\",interaction)
+    await dircp_discord(server_path + world_name,backup_path + "/",interaction)
     backup_logger.info('backup done')
 
 #/replace <py file>
@@ -637,7 +645,7 @@ async def replace(interaction: discord.Interaction,py_file:discord.Attachment):
     if await is_running_server(interaction,replace_logger): return
     replace_logger.info('replace started')
     # ファイルをすべて読み込む
-    with open(temp_path + "\\new_source.py","w",encoding="utf-8") as f:
+    with open(temp_path + "/new_source.py","w",encoding="utf-8") as f:
         f.write((await py_file.read()).decode("utf-8").replace("\r\n","\n"))
     # discordにコードを置き換える
     replace_logger.info('replace done')
@@ -648,7 +656,7 @@ async def replace(interaction: discord.Interaction,py_file:discord.Attachment):
     channel_id = str(interaction.channel_id)
     replace_logger.info("call update.py")
     replace_logger.info('replace args : ' + msg_id + " " + channel_id)
-    os.execv(sys.executable,["python3",now_path + "\\" + "update.py",temp_path + "\\new_source.py",msg_id,channel_id,now_file])
+    os.execv(sys.executable,["python3",now_path + "/" + "update.py",temp_path + "/new_source.py",msg_id,channel_id,now_file])
 
 #/ip
 @tree.command(name="ip",description="サーバーのIPアドレスを表示します")
@@ -688,7 +696,7 @@ async def exit(interaction: discord.Interaction):
 # discord.py用のロガーを取得して設定
 discord_logger = logging.getLogger('discord')
 if log["all"]:
-    file_handler = logging.FileHandler(now_path + "\\logs\\all " + time + ".log")
+    file_handler = logging.FileHandler(now_path + "/logs/all " + time + ".log")
     file_handler.setFormatter(file_formatter)
     discord_logger.addHandler(file_handler)
 
