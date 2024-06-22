@@ -513,7 +513,8 @@ async def dircp_discord(src, dst, interaction: discord.Interaction, symlinks=Fal
 #logger thread
 def server_logger(proc,ret):
     global process,is_back_discord 
-    file = open(file = server_path + "logs/server " + datetime.now().strftime("%Y-%m-%d_%H_%M_%S") + ".log",mode = "w")
+    if log["server"]:
+        file = open(file = server_path + "logs/server " + datetime.now().strftime("%Y-%m-%d_%H_%M_%S") + ".log",mode = "w")
     while True:
         logs = proc.stdout.readline()
         #ログに\nが含まれない = プロセスが終了している
