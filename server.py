@@ -238,15 +238,25 @@ class Formatter():
             
             # Get the formatted message
             message = record.getMessage()
-            msg_type = message.split()
-            if len(msg_type) > 2:
-                msg_type = msg_type[2][:-1]
-            if msg_type == "INFO":
+            # msg_type = message.split()
+            # if len(msg_type) > 2:
+            #     msg_type = msg_type[2][:-1]
+            # if msg_type == "INFO":
+            #     msg_color = Color.CYAN
+            # elif msg_type == "ERROR":
+            #     msg_color = Color.RED
+            # else:
+            #     msg_color = Color.RESET
+            what_type = message.upper()
+            if "INFO" in what_type:
                 msg_color = Color.CYAN
-            elif msg_type == "ERROR":
+            elif "ERROR" in what_type:
                 msg_color = Color.RED
+            elif "WARN" in what_type:
+                msg_color = Color.YELLOW
             else:
                 msg_color = Color.RESET
+
             message = msg_color + message + Color.RESET
             
             # Create the final formatted message
