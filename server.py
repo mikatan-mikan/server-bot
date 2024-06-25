@@ -69,7 +69,7 @@ def make_config():
             os.makedirs(default_backup_path)
         default_backup_path = os.path.realpath(default_backup_path) + "/"
         print("default backup path: " + default_backup_path)
-        config_dict = {"allow":{"ip":True},"server_path":now_path + "/","allow_mccmd":["list","whitelist","tellraw","w","tell"],"server_name":"bedrock_server.exe","log":{"server":True,"all":False},"backup_path": default_backup_path}
+        config_dict = {"allow":{"ip":True},"server_path":now_path + "/","allow_mccmd":["list","whitelist","tellraw","w","tell"],"server_name":"bedrock_server.exe","log":{"server":True,"all":False},"backup_path": default_backup_path,"mc":True}
         json.dump(config_dict,file,indent=4)
         config_changed = True
     else:
@@ -110,6 +110,8 @@ def make_config():
                 cfg["backup_path"] = os.path.realpath(cfg["backup_path"]) + "/"
                 if not os.path.exists(cfg["backup_path"]):
                     os.makedirs(cfg["backup_path"])
+            if "mc" not in cfg:
+                cfg["mc"] = True
             return cfg
         if config_dict != check(config_dict.copy()):
             check(config_dict)
@@ -421,6 +423,24 @@ cmd_logs = deque(maxlen=100)
 #ログをdiscordにも返す可能性がある
 is_back_discord = False
 
+#java properties の読み込み
+def properties_to_dict(filename):
+    properties = {}
+    with open(filename) as file:
+        for line in file:
+            line = line.strip()
+            if line and not line.startswith('#'):
+                if line.startswith(' ') or line.startswith('\t'):
+                    line = line[1:]
+                key, value = line.split('=', 1)
+                properties[key] = value
+    return properties
+    
+#minecraftサーバーであればpropertiesを読み込む
+if config["mc"]:
+    properties = properties_to_dict(server_path + "server.properties")
+    sys_logger.info("read properties file -> " + server_path + "server.properties")
+
 #help
 help_str = {
     "/stop   ":"サーバーを停止します。但し起動していない場合にはエラーメッセージを返します。",
@@ -683,8 +703,12 @@ async def ip(interaction: discord.Interaction):
         ip_logger.error('get ip failed')
         await interaction.response.send_message("IPアドレスを取得できません")
         return
-    ip_logger.info('get ip : ' + addr.text)
-    await interaction.response.send_message("サーバーip : " + addr.text)
+    if config["mc"]:
+        ip_logger.info('get ip : ' + addr.text + ":" + properties["server-port"])
+        await interaction.response.send_message("サーバーip : " + addr.text + ":" + properties["server-port"])
+    else:
+        ip_logger.info('get ip : ' + addr.text)
+        await interaction.response.send_message("サーバーip : " + addr.text)
 
 
 #/help
