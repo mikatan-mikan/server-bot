@@ -85,18 +85,20 @@ tokenを記述し、configのserver_pathにserver.[exe/jar]へのパスを記述
         "server": true,
         "all": false
     },
-    "backup_path": str(path of backup)
+    "backup_path": str(path of backup),
+    "mc": true
 }
 ```
 
 |項目|説明|
 |---|---|
 |allow|各コマンドの実行を許可するかどうか。(現在は/ipにのみ実装されています)|
-|server_path|minecraft server本体のパス(例えば`D:\\a\\server.jar`に配置されていれば`D:\\a\\`)|
+|server_path|minecraft server本体のパス(例えば`D:\\a\\server.jar`に配置されていれば`D:\\a\\`または`D:/a/`)|
 |allow_mccmd|/cmdで標準入力を許可するコマンド名のリスト|
 |server_name|minecraft server本体の名前|
 |log|各種ログを保存するか否か serverをtrueにするとmcサーバーの実行ログをmcserverと同じディレクトリに保存し、allをtrueにするとすべてのログをserver.pyと同じディレクトリに保存します|
-|backup_path|ワールドデータのバックアップパス(例えば`D:\\server\\backup`に保存したければ`D:\\server\\backup\\`)|
+|backup_path|ワールドデータのバックアップパス(例えば`D:\\server\\backup`に保存したければ`D:\\server\\backup\\`または`D:/server/backup/`)|
+|mc|サーバーがmcサーバーかどうかを記述します。現在trueに設定されている場合、/ip時にserver.protocolからserver-portを読み出します|
 
 server.pyはサーバ本体と同じ改装に配置することを推奨します。
 
