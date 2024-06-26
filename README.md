@@ -34,17 +34,21 @@ discordを用いて特定のサーバーを管理できます。
 
 ## 動作確認
 
-統合版 dedicated server にて動作確認をしています(1.21で確認済み 2024/06/14)。
+|確認バージョン|日時|確認時のOS|
+|----|----|----|
+|Java vanilla 1.9.4|2024/06/26|Windows 11|
+|Java vanilla 1.19|2024/06/26|Windows 11|
+|Bedrock dedicated server 1.21|2024/06/14|Windows 11 & Ubuntu(wsl2)|
 
-java版でも恐らく使えるはず。。。
+java版serverを起動する際一般に利用されるような以下の内容のbatをconfigのserver_nameに設定しています。noguiオプションが無い場合現在/stopが利用できません。
 
-恐らくという意味ではこのbotは/stopの際に標準入力にstopを入力していますが、その点を変更すれば他のゲームサーバ等でも利用できるはずです。。。
+`java -Xmx4048M -Xms1024M -jar server.jar nogui`
 
 ### 確認済み環境
 
 windows 11 version 23H2  / python3.12.2&3.10.2
 
-ubuntu(wsl2) / python3.8.10
+ubuntu(wsl2) / python3.8.10 (古いバージョンのPythonを利用する場合は、configの初期設定が相対パスになります。絶対パスに直してから実行してください)
 
 ## 必要なもの
 
@@ -55,6 +59,8 @@ ubuntu(wsl2) / python3.8.10
 requirements.txtを参照
 
 ## 使用方法
+
+(読みたくない方へ：ドライブ直下でない場所にserver.pyを配置して実行して進めれば何とかなるかも・・・？)
 
 server.pyを任意の場所に配置します。(推奨ディレクトリは実行するserver.[exe/jar]が存在する階層です。)
 
@@ -102,7 +108,7 @@ tokenを記述し、configのserver_pathにserver.[exe/jar]へのパスを記述
 |allow|各コマンドの実行を許可するかどうか。(現在は/ipにのみ実装されています)|
 |server_path|minecraft server本体のパス(例えば`D:\\a\\server.jar`に配置されていれば`D:\\a\\`または`D:/a/`)|
 |allow_mccmd|/cmdで標準入力を許可するコマンド名のリスト|
-|server_name|minecraft server本体の名前|
+|server_name|minecraft server本体の名前 java版の場合サーバ起動に利用される`server.bat`等を入力してください(jarを直接指定するとGUIで起動するため)|
 |log|各種ログを保存するか否か serverをtrueにするとmcサーバーの実行ログをmcserverと同じディレクトリに保存し、allをtrueにするとすべてのログをserver.pyと同じディレクトリに保存します|
 |backup_path|ワールドデータのバックアップパス(例えば`D:\\server\\backup`に保存したければ`D:\\server\\backup\\`または`D:/server/backup/`)|
 |mc|サーバーがmcサーバーかどうかを記述します。現在trueに設定されている場合、/ip時にserver.protocolからserver-portを読み出します|
@@ -143,7 +149,7 @@ server.pyはサーバ本体と同じ改装に配置することを推奨しま�
 
 今後の更新ではupdate.pyを自動更新するように変更しています。
 
-### 2024/06/26 /logの追加
+### 2024/06/26 /logの追加 / javaでの動作確認
 
 ・/logを追加しました。
 
@@ -153,7 +159,7 @@ server.pyはサーバ本体と同じ改装に配置することを推奨しま�
 
 discord コマンドがエラーで終了した際にその結果を返すようになりました。
 
-### 2024/06/25 /ip時にポートを出力するように変更
+### 2024/06/26 /ip時にポートを出力するように変更
 
 ・/ipを行った際config中のmcがtrueの場合、/ip時にserver.protocolからserver-portを読み出し出力するように変更しました。
 
