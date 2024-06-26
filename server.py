@@ -469,7 +469,7 @@ help_str = {
 send_help = "```\n"
 def make_send_help():
     global send_help
-    send_help = "詳細なHelpはこちらを参照してください\n<https://github.com/mikatan-mikan/server-bot/blob/main/README.md#%E7%94%A8%E9%80%94>\n"
+    send_help = "詳細なHelpはこちらを参照してください\n<https://github.com/mikatan-mikan/server-bot/blob/main/README.md#%E3%82%B3%E3%83%9E%E3%83%B3%E3%83%89%E4%B8%80%E8%A6%A7>\n"
     send_help += "```"
     for key in help_str:
         send_help += key + " " + help_str[key] + "\n"
