@@ -563,7 +563,12 @@ def server_logger(proc,ret):
     if log["server"]:
         file = open(file = server_path + "logs/server " + datetime.now().strftime("%Y-%m-%d_%H_%M_%S") + ".log",mode = "w")
     while True:
-        logs = proc.stdout.readline()
+        try:
+            logs = proc.stdout.readline()
+        except Exception as e:
+            sys_logger.error(e)
+            sys_logger.info("server close")
+            break
         #ログに\nが含まれない = プロセスが終了している
         if "\n" not in logs:
             break
@@ -582,7 +587,6 @@ def server_logger(proc,ret):
         if is_back_discord:
             cmd_logs.append(logs)
             is_back_discord = False
-    ret.append("server closed")
     process = None
 
 
@@ -602,10 +606,7 @@ async def on_ready():
     await client.change_presence(activity=discord.Game('さーばーきどう'))
     if process is  None:
         #server を実行する
-        if platform.system() == "Windows":
-            process = subprocess.Popen([server_path + server_name],shell=True,stdin=subprocess.PIPE,stdout=subprocess.PIPE,encoding="utf-8")
-        else:
-            process = subprocess.Popen([server_path + server_name],cwd=server_path,shell=True,stdin=subprocess.PIPE,stdout=subprocess.PIPE,encoding="utf-8")
+        process = subprocess.Popen([server_path + server_name],cwd=server_path,shell=True,stdin=subprocess.PIPE,stdout=subprocess.PIPE,encoding="utf-8")
         threading.Thread(target=server_logger,args=(process,deque())).start()
         ready_logger.info('server starting')
     else:
@@ -622,10 +623,7 @@ async def start(interaction: discord.Interaction):
     global process
     if await is_running_server(interaction,start_logger): return
     start_logger.info('server starting')
-    if platform.system() == "Windows":
-        process = subprocess.Popen([server_path + server_name],shell=True,stdin=subprocess.PIPE,stdout=subprocess.PIPE,encoding="utf-8")
-    else:
-        process = subprocess.Popen([server_path + server_name],cwd=server_path,shell=True,stdin=subprocess.PIPE,stdout=subprocess.PIPE,encoding="utf-8")
+    process = subprocess.Popen([server_path + server_name],cwd=server_path,shell=True,stdin=subprocess.PIPE,stdout=subprocess.PIPE,encoding="utf-8")
     await interaction.response.send_message("サーバーを起動します")
     threading.Thread(target=server_logger,args=(process,deque())).start()
     new_activity = f"さーばーじっこう"
