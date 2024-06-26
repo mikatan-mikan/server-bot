@@ -751,6 +751,12 @@ async def exit(interaction: discord.Interaction):
     exit_logger.info('exit')
     await client.close()
 
+#コマンドがエラーの場合
+@tree.error
+async def on_error(interaction: discord.Interaction, error: Exception):
+    sys_logger.error(error)
+    await interaction.response.send_message("エラーが発生しました。\n" + str(error))
+
 # discord.py用のロガーを取得して設定
 discord_logger = logging.getLogger('discord')
 if log["all"]:
