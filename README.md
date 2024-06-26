@@ -38,9 +38,10 @@ discordを用いて特定のサーバーを管理できます。
 |----|----|----|
 |Java vanilla 1.9.4|2024/06/26|Windows 11|
 |Java vanilla 1.19|2024/06/26|Windows 11|
+|Java fabric 1.20.1|2024/06/26|Windows 11|
 |Bedrock dedicated server 1.21|2024/06/14|Windows 11 & Ubuntu(wsl2)|
 
-java版serverをWindowsで起動する際一般に利用されるような以下の内容のbatをconfigのserver_nameに設定しています。noguiオプションが無い場合現在/stop等が利用できません。
+java版serverをWindowsで起動する際一般に利用されるような以下の内容のbatをconfigのserver_nameに設定しています。noguiオプションが無い場合現在/stop等が利用できません。(fabric : start.bat , forge : run.bat)
 
 `java -Xmx4048M -Xms1024M -jar server.jar nogui`
 
