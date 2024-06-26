@@ -307,8 +307,17 @@ class Formatter():
 dt_fmt = '%Y-%m-%d %H:%M:%S'
 console_formatter = Formatter.ColoredFormatter(f'{Color.BOLD + Color.BG_BLACK}%(asctime)s %(levelname)s %(name)s: %(message)s', dt_fmt)
 file_formatter = Formatter.DefaultConsoleFormatter('%(asctime)s %(levelname)s %(name)s: %(message)s', dt_fmt)
+#/log用のログ保管場所
+log_msg = deque(maxlen=10)
 def create_logger(name,console_formatter=console_formatter,file_formatter=file_formatter):
+    class DequeHandler(logging.Handler):
+        def __init__(self, deque):
+            super().__init__()
+            self.deque = deque
 
+        def emit(self, record):
+            log_entry = self.format(record)
+            self.deque.append(log_entry)
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
     console = logging.StreamHandler()
@@ -321,6 +330,10 @@ def create_logger(name,console_formatter=console_formatter,file_formatter=file_f
         file.setLevel(logging.DEBUG)
         file.setFormatter(file_formatter)
         logger.addHandler(file)
+    deque_handler = DequeHandler(log_msg)
+    deque_handler.setLevel(logging.DEBUG)
+    deque_handler.setFormatter(console_formatter)  # フォーマットは任意で設定
+    logger.addHandler(deque_handler)
     return logger
 
 #ロガーの作成
@@ -336,6 +349,7 @@ backup_logger = create_logger("backup")
 replace_logger = create_logger("replace")
 ip_logger = create_logger("ip")
 sys_logger = create_logger("sys")
+log_logger = create_logger("log")
 minecraft_logger = create_logger("minecraft",Formatter.MinecraftFormatter(f'{Color.BOLD + Color.BG_BLACK}%(asctime)s %(levelname)s %(name)s: %(message)s', dt_fmt),Formatter.MinecraftConsoleFormatter('%(asctime)s %(levelname)s %(name)s: %(message)s', dt_fmt))
 #--------------------------------------------------------------------------------------------
 
@@ -710,6 +724,15 @@ async def ip(interaction: discord.Interaction):
         ip_logger.info('get ip : ' + addr.text)
         await interaction.response.send_message("サーバーip : " + addr.text)
 
+
+#/log
+@tree.command(name="logs",description="botのログを表示します")
+async def logs(interaction: discord.Interaction):
+    #管理者権限を要求
+    if not await is_administrator(interaction,log_logger): return
+    # discordにログを送信
+    await interaction.response.send_message("```ansi\n" + "\n".join(log_msg) + "\n```")
+    log_logger.info("sended logs...")
 
 #/help
 @tree.command(name="help",description="botのコマンド一覧を表示します")
