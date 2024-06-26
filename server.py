@@ -583,13 +583,16 @@ async def on_ready():
     ready_logger.info('discord bot logging on')
     #サーバーの起動
     await client.change_presence(activity=discord.Game('さーばーきどう'))
-    #server を実行する
-    if platform.system() == "Windows":
-        process = subprocess.Popen([server_path + server_name],shell=True,stdin=subprocess.PIPE,stdout=subprocess.PIPE,encoding="utf-8")
+    if process is  None:
+        #server を実行する
+        if platform.system() == "Windows":
+            process = subprocess.Popen([server_path + server_name],shell=True,stdin=subprocess.PIPE,stdout=subprocess.PIPE,encoding="utf-8")
+        else:
+            process = subprocess.Popen([server_path + server_name],cwd=server_path,shell=True,stdin=subprocess.PIPE,stdout=subprocess.PIPE,encoding="utf-8")
+        threading.Thread(target=server_logger,args=(process,deque())).start()
+        ready_logger.info('server starting')
     else:
-        process = subprocess.Popen([server_path + server_name],cwd=server_path,shell=True,stdin=subprocess.PIPE,stdout=subprocess.PIPE,encoding="utf-8")
-    threading.Thread(target=server_logger,args=(process,deque())).start()
-    ready_logger.info('server starting')
+        ready_logger.info('skip server starting because server already running')
     # アクティビティを設定 
     new_activity = f"さーばーじっこう" 
     await client.change_presence(activity=discord.Game(new_activity)) 
