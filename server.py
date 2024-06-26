@@ -778,7 +778,7 @@ async def logs(interaction: discord.Interaction,filename:str = None):
                 if os.path.exists(now_path + "/logs/" + filename):
                     filename = now_path + "/logs/" + filename
                 else:
-                    log_logger.info('invalid filename : ' + filename + "\n" + f"interaction user / id：{interaction.user} {interaction.user.id}")
+                    log_logger.error('invalid filename : ' + filename + "\n" + f"interaction user / id：{interaction.user} {interaction.user.id}")
                     await interaction.response.send_message("ログファイルが見つかりません。この操作はログに記録されます。")
                     return
         #ファイルを返却
