@@ -40,7 +40,7 @@ discordを用いて特定のサーバーを管理できます。
 |Java vanilla 1.19|2024/06/26|Windows 11|
 |Bedrock dedicated server 1.21|2024/06/14|Windows 11 & Ubuntu(wsl2)|
 
-java版serverを起動する際一般に利用されるような以下の内容のbatをconfigのserver_nameに設定しています。noguiオプションが無い場合現在/stopが利用できません。
+java版serverをWindowsで起動する際一般に利用されるような以下の内容のbatをconfigのserver_nameに設定しています。noguiオプションが無い場合現在/stop等が利用できません。
 
 `java -Xmx4048M -Xms1024M -jar server.jar nogui`
 
@@ -54,9 +54,7 @@ ubuntu(wsl2) / python3.8.10 (古いバージョンのPythonを利用する場合
 
 現在使用していないdiscord bot
 
-### ライブラリ
-
-requirements.txtを参照
+ライブラリ：requirements.txtを参照
 
 ## 使用方法
 
@@ -108,7 +106,7 @@ tokenを記述し、configのserver_pathにserver.[exe/jar]へのパスを記述
 |allow|各コマンドの実行を許可するかどうか。(現在は/ipにのみ実装されています)|
 |server_path|minecraft server本体のパス(例えば`D:\\a\\server.jar`に配置されていれば`D:\\a\\`または`D:/a/`)|
 |allow_mccmd|/cmdで標準入力を許可するコマンド名のリスト|
-|server_name|minecraft server本体の名前 java版の場合サーバ起動に利用される`server.bat`等を入力してください(jarを直接指定するとGUIで起動するため)|
+|server_name|minecraft server本体の名前 java版の場合サーバ起動に利用される`server.bat`等を入力してください(GUI起動させないでください)|
 |log|各種ログを保存するか否か serverをtrueにするとmcサーバーの実行ログをmcserverと同じディレクトリに保存し、allをtrueにするとすべてのログをserver.pyと同じディレクトリに保存します|
 |backup_path|ワールドデータのバックアップパス(例えば`D:\\server\\backup`に保存したければ`D:\\server\\backup\\`または`D:/server/backup/`)|
 |mc|サーバーがmcサーバーかどうかを記述します。現在trueに設定されている場合、/ip時にserver.protocolからserver-portを読み出します|
