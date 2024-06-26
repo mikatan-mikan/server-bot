@@ -654,7 +654,7 @@ async def cmd(interaction: discord.Interaction,command:str):
         break
 
 #/backup()
-@tree.command(name="backup",description="ワールドデータをバックアップします")
+@tree.command(name="backup",description="ワールドデータをバックアップします。引数にはワールドファイルの名前を指定します。入力しない場合worldsが選択されます。")
 async def backup(interaction: discord.Interaction,world_name:str = "worlds"):
     global exist_files, copyed_files
     #管理者権限を要求
