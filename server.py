@@ -740,8 +740,8 @@ async def get_log_files_choice_format(interaction: discord.Interaction, current:
     s_logfiles = os.listdir(server_path + "logs/")
     a_logfiles = os.listdir(now_path + "/logs/")
     logfiles = (s_logfiles + a_logfiles)
-    # current と一致するものを返す & 25個制限を実装
-    logfiles = [i for i in logfiles if current in i][-25:]
+    # current と一致するものを返す & logファイル & 25個制限を実装
+    logfiles = [i for i in logfiles if current in i and i.endswith(".log")][-25:]
     # open("./tmp.txt","w").write("\n".join(logfiles))
     return [
         app_commands.Choice(name = i,value = i) for i in logfiles
@@ -760,14 +760,22 @@ async def logs(interaction: discord.Interaction,filename:str = None):
     if filename is None:
         await interaction.response.send_message("```ansi\n" + "\n".join(log_msg) + "\n```")
     else:
-        if filename.startswith("server"):
+        if "/" in filename or "\\" in filename:
+            log_logger.error('invalid filename : ' + filename)
+        elif filename.startswith("server"):
             filename = server_path + "logs/" + filename
         elif filename.startswith("all"):
             filename = now_path + "/logs/" + filename
         else:
             filename = server_path + "logs/" + filename
             if not os.path.exists(filename):
-                filename = now_path + "/logs/" + filename
+                try:
+                    filename = now_path + "/logs/" + filename
+                except Exception as e:
+                    log_logger.error(e)
+                    log_logger.info('invalid filename : ' + filename + "\n" + f"interaction user：{interaction.user}")
+                    await interaction.response.send_message("ログファイルが見つかりません。この操作はログに記録されます。")
+                    return
         #ファイルを返却
         await interaction.response.send_message(file=discord.File(filename))
     log_ = "Server logs" if filename is None else filename
