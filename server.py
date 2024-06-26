@@ -460,14 +460,17 @@ help_str = {
     "/stop   ":"サーバーを停止します。但し起動していない場合にはエラーメッセージを返します。",
     "/start  ":"サーバーを起動します。但し起動している場合にはエラーメッセージを返します。",
     "/exit   ":"botを終了します。サーバーを停止してから実行してください。終了していない場合にはエラーメッセージを返します。\nまたこのコマンドを実行した場合次にbotが起動するまですべてのコマンドが無効になります。",
-    "/cmd    ":f"/cmd <mcコマンド>を用いてサーバーコンソール上でコマンドを実行できます。使用できるコマンドは{allow_cmd}です。",
-    "/backup ":"/backup [ワールド名] ワールドデータをバックアップします。ワールド名を省略した場合worldsをコピーします。サーバーを停止した状態で実行してください",
+    "/cmd    ":f"/cmd <mcコマンド> を用いてサーバーコンソール上でコマンドを実行できます。使用できるコマンドは{allow_cmd}です。",
+    "/backup ":"/backup [ワールド名] でワールドデータをバックアップします。ワールド名を省略した場合worldsをコピーします。サーバーを停止した状態で実行してください",
     "/replace":"/replace <py file> によってbotのコードを置き換えます。",
-    "/ip     ":"サーバーのIPアドレスを表示します。"
+    "/ip     ":"サーバーのIPアドレスを表示します。",
+    "/logs   ":"サーバーのログを表示します。引数を与えた場合にはそのファイルを、与えられなければ動作中に得られたログから最新の10件を返します。",
 }
 send_help = "```\n"
 def make_send_help():
     global send_help
+    send_help = "詳細なHelpはこちらを参照してください\n<https://github.com/mikatan-mikan/server-bot/blob/main/README.md#%E7%94%A8%E9%80%94>\n"
+    send_help += "```"
     for key in help_str:
         send_help += key + " " + help_str[key] + "\n"
     send_help += "```"
@@ -728,13 +731,42 @@ async def ip(interaction: discord.Interaction):
         await interaction.response.send_message("サーバーip : " + addr.text)
 
 
-#/log
-@tree.command(name="logs",description="botのログを表示します")
-async def logs(interaction: discord.Interaction):
+async def get_log_files_choice_format(interaction: discord.Interaction, current: str):
+    current = current.translate(str.maketrans("/\\:","--_"))
+    #全てのファイルを取得
+    s_logfiles = os.listdir(server_path + "logs/")
+    a_logfiles = os.listdir(now_path + "/logs/")
+    logfiles = (s_logfiles + a_logfiles)
+    # current と一致するものを返す & 25個制限を実装
+    logfiles = [i for i in logfiles if current in i][-25:]
+    # open("./tmp.txt","w").write("\n".join(logfiles))
+    return [
+        app_commands.Choice(name = i,value = i) for i in logfiles
+    ]
+
+#/log <filename>
+# filename : ログファイル名
+# filename == None -> 最新のログ10件
+# filename != None -> server_path + "logs/" または now_path + "logs/"の中を候補表示する
+@tree.command(name="logs",description="botのログを表示します。引数が与えられない場合動作中のログから直近10件を表示します。")
+@app_commands.autocomplete(filename = get_log_files_choice_format)
+async def logs(interaction: discord.Interaction,filename:str = None):
     #管理者権限を要求
     if not await is_administrator(interaction,log_logger): return
     # discordにログを送信
-    await interaction.response.send_message("```ansi\n" + "\n".join(log_msg) + "\n```")
+    if filename is None:
+        await interaction.response.send_message("```ansi\n" + "\n".join(log_msg) + "\n```")
+    else:
+        if filename.startswith("server"):
+            filename = server_path + "logs/" + filename
+        elif filename.startswith("all"):
+            filename = now_path + "/logs/" + filename
+        else:
+            filename = server_path + "logs/" + filename
+            if not os.path.exists(filename):
+                filename = now_path + "/logs/" + filename
+        #ファイルを返却
+        await interaction.response.send_message(file=discord.File(filename))
     log_logger.info("sended logs...")
 
 #/help
