@@ -760,8 +760,14 @@ async def logs(interaction: discord.Interaction,filename:str = None):
     if filename is None:
         await interaction.response.send_message("```ansi\n" + "\n".join(log_msg) + "\n```")
     else:
-        if "/" in filename or "\\" in filename:
-            log_logger.error('invalid filename : ' + filename)
+        if "/" in filename or "\\" in filename or "%" in filename:
+            log_logger.error('invalid filename : ' + filename + "\n" + f"interaction user / id：{interaction.user} {interaction.user.id}")
+            await interaction.response.send_message("他のディレクトリにアクセスすることはできません。この操作はログに記録されます。")
+            return
+        elif not filename.endswith(".log"):
+            log_logger.error('invalid filename : ' + filename + "\n" + f"interaction user / id：{interaction.user} {interaction.user.id}")
+            await interaction.response.send_message("ログファイルが見つかりません。この操作はログに記録されます。")
+            return
         elif filename.startswith("server"):
             filename = server_path + "logs/" + filename
         elif filename.startswith("all"):
@@ -769,11 +775,10 @@ async def logs(interaction: discord.Interaction,filename:str = None):
         else:
             filename = server_path + "logs/" + filename
             if not os.path.exists(filename):
-                try:
+                if os.path.exists(now_path + "/logs/" + filename):
                     filename = now_path + "/logs/" + filename
-                except Exception as e:
-                    log_logger.error(e)
-                    log_logger.info('invalid filename : ' + filename + "\n" + f"interaction user：{interaction.user}")
+                else:
+                    log_logger.info('invalid filename : ' + filename + "\n" + f"interaction user / id：{interaction.user} {interaction.user.id}")
                     await interaction.response.send_message("ログファイルが見つかりません。この操作はログに記録されます。")
                     return
         #ファイルを返却
