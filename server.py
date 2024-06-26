@@ -750,6 +750,17 @@ async def logs(interaction: discord.Interaction,filename:str = None):
     # discordにログを送信
     if filename is None:
         await interaction.response.send_message("```ansi\n" + "\n".join(log_msg) + "\n```")
+    else:
+        if filename.startswith("server"):
+            filename = server_path + "logs/" + filename
+        elif filename.startswith("all"):
+            filename = now_path + "/logs/" + filename
+        else:
+            filename = server_path + "logs/" + filename
+            if not os.path.exists(filename):
+                filename = now_path + "/logs/" + filename
+        #ファイルを返却
+        await interaction.response.send_message(file=discord.File(filename))
     log_logger.info("sended logs...")
 
 #/help
