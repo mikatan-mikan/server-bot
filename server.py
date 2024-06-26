@@ -463,11 +463,14 @@ help_str = {
     "/cmd    ":f"/cmd <mcコマンド>を用いてサーバーコンソール上でコマンドを実行できます。使用できるコマンドは{allow_cmd}です。",
     "/backup ":"/backup [ワールド名] ワールドデータをバックアップします。ワールド名を省略した場合worldsをコピーします。サーバーを停止した状態で実行してください",
     "/replace":"/replace <py file> によってbotのコードを置き換えます。",
-    "/ip     ":"サーバーのIPアドレスを表示します。"
+    "/ip     ":"サーバーのIPアドレスを表示します。",
+    "/log    ":"サーバーのログを表示します。引数を与えた場合にはそのファイルを、与えられなければ動作中に得られたログから最新の10件を返します。",
 }
 send_help = "```\n"
 def make_send_help():
     global send_help
+    send_help = "詳細なHelpはこちらを参照してください\nhttps://github.com/mikatan-mikan/server-bot/blob/main/README.md \n"
+    send_help += "```"
     for key in help_str:
         send_help += key + " " + help_str[key] + "\n"
     send_help += "```"
@@ -742,7 +745,7 @@ async def get_log_files_choice_format(interaction: discord.Interaction, current:
 # filename : ログファイル名
 # filename == None -> 最新のログ10件
 # filename != None -> server_path + "logs/" または now_path + "logs/"の中を候補表示する
-@tree.command(name="logs",description="botのログを表示します")
+@tree.command(name="logs",description="botのログを表示します。引数が与えられない場合動作中のログから直近10件を表示します。")
 @app_commands.autocomplete(filename = get_log_files_choice_format)
 async def logs(interaction: discord.Interaction,filename:str = None):
     #管理者権限を要求
