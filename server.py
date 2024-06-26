@@ -725,13 +725,31 @@ async def ip(interaction: discord.Interaction):
         await interaction.response.send_message("サーバーip : " + addr.text)
 
 
-#/log
+async def get_log_files_choice_format(interaction: discord.Interaction, current: str):
+    current = current.translate(str.maketrans("/\\:","--_"))
+    #全てのファイルを取得
+    s_logfiles = os.listdir(server_path + "logs/")
+    a_logfiles = os.listdir(now_path + "/logs/")
+    logfiles = (s_logfiles + a_logfiles)
+    # current と一致するものを返す & 25個制限を実装
+    logfiles = [i for i in logfiles if current in i][-25:]
+    # open("./tmp.txt","w").write("\n".join(logfiles))
+    return [
+        app_commands.Choice(name = i,value = i) for i in logfiles
+    ]
+
+#/log <filename>
+# filename : ログファイル名
+# filename == None -> 最新のログ10件
+# filename != None -> server_path + "logs/" または now_path + "logs/"の中を候補表示する
 @tree.command(name="logs",description="botのログを表示します")
-async def logs(interaction: discord.Interaction):
+@app_commands.autocomplete(filename = get_log_files_choice_format)
+async def logs(interaction: discord.Interaction,filename:str = None):
     #管理者権限を要求
     if not await is_administrator(interaction,log_logger): return
     # discordにログを送信
-    await interaction.response.send_message("```ansi\n" + "\n".join(log_msg) + "\n```")
+    if filename is None:
+        await interaction.response.send_message("```ansi\n" + "\n".join(log_msg) + "\n```")
     log_logger.info("sended logs...")
 
 #/help
