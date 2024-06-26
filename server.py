@@ -767,7 +767,8 @@ async def logs(interaction: discord.Interaction,filename:str = None):
                 filename = now_path + "/logs/" + filename
         #ファイルを返却
         await interaction.response.send_message(file=discord.File(filename))
-    log_logger.info(f"sended logs -> {"Server logs" if filename is None else filename}")
+    log_ = "Server logs" if filename is None else filename
+    log_logger.info(f"sended logs -> {log_}")
 
 #/help
 @tree.command(name="help",description="botのコマンド一覧を表示します")
