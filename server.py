@@ -573,18 +573,18 @@ def server_logger(proc,ret):
         except Exception as e:
             sys_logger.error(e)
             sys_logger.info("server close")
+            proc.stdin.write("stop\n")
             break
-        #ログに\nが含まれない = プロセスが終了している
-        if "\n" not in logs:
-            break
+        # プロセスが終了している
+        if logs == '': 
+            if proc.poll() is not None:
+                break
+            continue
         #ログが\nのみであれば不要
         if logs == "\n":
             continue
         #後ろが\nなら削除
-        while True:
-            if logs[-1] != "\n":
-                break
-            logs = logs[:-1]
+        logs = logs.rstrip("\n")
         minecraft_logger.info(logs)
         if log["server"]:
             file.write(logs + "\n")
@@ -592,6 +592,7 @@ def server_logger(proc,ret):
         if is_back_discord:
             cmd_logs.append(logs)
             is_back_discord = False
+    #プロセスを終了させる
     process = None
 
 
