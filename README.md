@@ -69,7 +69,7 @@ ubuntu(wsl2) / python3.8.10 (古いバージョンのPythonを利用する場合
 
 server.pyを任意の場所に配置します。(推奨ディレクトリは実行するserver.[exe/jar]が存在する階層です。)
 
-ただしserver.exeやserver.jar本体が存在する階層はrootでない必要があります。(何かのディレクトリの中に入れてください)これは、`../backup/`内にbackupが生成されるためです。
+ただしserver.exeやserver.jar本体が存在する階層はrootでない必要があります。(何かのディレクトリの中に入れてください)これは初期状態では、`../backup/`内にbackupが生成されるためです。
 
 後にserver.pyを起動するとserver.pyと同じ階層に`.token`と`.config`が生成されます。
 
@@ -117,7 +117,7 @@ tokenを記述し、configのserver_pathにserver.[exe/jar]へのパスを記述
 |server_name|minecraft server本体の名前 java版の場合サーバ起動に利用される`server.bat`等を入力してください(GUI起動させないでください)|
 |log|各種ログを保存するか否か serverをtrueにするとmcサーバーの実行ログをmcserverと同じディレクトリに保存し、allをtrueにするとすべてのログをserver.pyと同じディレクトリに保存します|
 |backup_path|ワールドデータのバックアップパス(例えば`D:\\server\\backup`に保存したければ`D:\\server\\backup\\`または`D:/server/backup/`)|
-|mc|サーバーがmcサーバーかどうかを記述します。現在trueに設定されている場合、/ip時にserver.protocolからserver-portを読み出します|
+|mc|サーバーがmcサーバーかどうかを記述します。現在trueに設定されている場合、/ip時にserver.propertiesからserver-portを読み出します|
 |lang|discordに送信するメッセージの言語を選択します。(en : 英語, ja : 日本語)|
 
 server.pyはサーバ本体と同じ改装に配置することを推奨します。
