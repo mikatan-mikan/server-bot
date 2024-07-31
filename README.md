@@ -50,7 +50,8 @@ discordを用いて特定のサーバーを管理できます。
 
 java版serverをWindowsで起動する際一般に利用されるような以下の内容のbatをconfigのserver_nameに設定しています。noguiオプションが無い場合現在/stop等が利用できません。(fabric : start.bat , forge : run.bat)
 
-<span style="color: red; ">-Dfile.encoding=UTF-8が存在しない場合一部環境で特殊文字等が正常に表示されません</span>
+> [!WARNING]
+> -Dfile.encoding=UTF-8が存在しない場合一部環境で特殊文字等が正常に表示されません。またpauseのようなコマンドを記載しないでください。(このプログラムはサーバーを制御するプログラムです。それ以外のコマンドを実行しないでください。)
 
 `java -Xmx4048M -Xms1024M -Dfile.encoding=UTF-8 -jar server.jar nogui`
 
