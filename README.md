@@ -50,7 +50,8 @@ discordを用いて特定のサーバーを管理できます。
 
 java版serverをWindowsで起動する際一般に利用されるような以下の内容のbatをconfigのserver_nameに設定しています。noguiオプションが無い場合現在/stop等が利用できません。(fabric : start.bat , forge : run.bat)
 
-<span style="color: red; ">-Dfile.encoding=UTF-8が存在しない場合一部環境で特殊文字等が正常に表示されません</span>
+> [!WARNING]
+> -Dfile.encoding=UTF-8が存在しない場合一部環境で特殊文字等が正常に表示されません。またpauseのようなコマンドを記載しないでください。(このプログラムはサーバーを制御するプログラムです。それ以外のコマンドを実行しないでください。)
 
 `java -Xmx4048M -Xms1024M -Dfile.encoding=UTF-8 -jar server.jar nogui`
 
@@ -83,6 +84,9 @@ server.pyを任意の場所に配置します。(推奨ディレクトリは実�
 このとき同時に`update.py`が生成されますが、これは`/repalce`を実行するために必要なファイルです。
 
 tokenを記述し、configのserver_pathにserver.[exe/jar]へのパスを記述後に再度server.pyを起動すると正常に起動するはずです。このプログラムはserver.pyがサーバー本体を呼び出すためserver.[exe/jar]を自身で起動する必要はありません。
+
+> [!WARNING]
+> server.jar(java edition)を起動する場合基本的には`java -Xmx4048M -Xms1024M -Dfile.encoding=UTF-8 -jar server.jar nogui`と記述されたbatファイル(Windowsの場合)を利用してください
 
 ### .config
 
