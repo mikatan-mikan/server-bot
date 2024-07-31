@@ -535,6 +535,7 @@ if lang == "ja":
         },
         "backup":{
             "now_backup":"バックアップ中・・・",
+            "data_not_found":"データが見つかりません",
             "success":"バックアップが完了しました！",
         },
         "replace":{
@@ -581,6 +582,7 @@ elif lang == "en":
         },
         "backup":{
             "now_backup":"Backup in progress",
+            "data_not_found":"Data not found",
             "success":"Backup complete!",
         },
         "replace":{
@@ -701,7 +703,7 @@ async def dircp_discord(src, dst, interaction: discord.Interaction, symlinks=Fal
     await copytree(src, dst, symlinks)
 
 #logger thread
-def server_logger(proc,ret):
+def server_logger(proc:subprocess.Popen,ret):
     global process,is_back_discord 
     if log["server"]:
         file = open(file = server_path + "logs/server " + datetime.now().strftime("%Y-%m-%d_%H_%M_%S") + ".log",mode = "w")
@@ -710,9 +712,7 @@ def server_logger(proc,ret):
             logs = proc.stdout.readline()
         except Exception as e:
             sys_logger.error(e)
-            sys_logger.info("server close")
-            proc.stdin.write("stop\n")
-            break
+            continue
         # プロセスが終了している
         if logs == '': 
             if proc.poll() is not None:
@@ -831,9 +831,14 @@ async def backup(interaction: discord.Interaction,world_name:str = "worlds"):
     if await is_running_server(interaction,backup_logger): return
     backup_logger.info('backup started')
     await interaction.response.send_message("progress...\n")
-    # discordにcopyed_files / exist_filesをプログレスバーで
-    await dircp_discord(server_path + world_name,backup_path + "/",interaction)
-    backup_logger.info('backup done')
+    #server_path + world_namの存在確認
+    if os.path.exists(server_path + world_name):
+        # discordにcopyed_files / exist_filesをプログレスバーで
+        await dircp_discord(server_path + world_name,backup_path + "/",interaction)
+        backup_logger.info('backup done')
+    else:
+        backup_logger.error('data not found : ' + server_path + world_name)
+        await interaction.response.send_message(RESPONSE_MSG["backup"]["data_not_found"] + ":" + server_path + world_name)
 
 #/replace <py file>
 @tree.command(name="replace",description=COMMAND_DESCRIPTION[lang]["replace"])
