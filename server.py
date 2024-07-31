@@ -830,9 +830,9 @@ async def backup(interaction: discord.Interaction,world_name:str = "worlds"):
     #サーバー起動確認
     if await is_running_server(interaction,backup_logger): return
     backup_logger.info('backup started')
-    await interaction.response.send_message("progress...\n")
     #server_path + world_namの存在確認
     if os.path.exists(server_path + world_name):
+        await interaction.response.send_message("progress...\n")
         # discordにcopyed_files / exist_filesをプログレスバーで
         await dircp_discord(server_path + world_name,backup_path + "/",interaction)
         backup_logger.info('backup done')
