@@ -83,10 +83,10 @@ server.pyを任意の場所に配置します。(推奨ディレクトリは実�
 
 このとき同時に`update.py`が生成されますが、これは`/repalce`を実行するために必要なファイルです。
 
-tokenを記述し、configのserver_pathにserver.[exe/jar]へのパスを記述後に再度server.pyを起動すると正常に起動するはずです。このプログラムはserver.pyがサーバー本体を呼び出すためserver.[exe/jar]を自身で起動する必要はありません。
+tokenを記述し、configのserver_pathにserver.[exe/bat(jarを実行するファイル)]へのパスを記述後に再度server.pyを起動すると正常に起動するはずです。このプログラムはserver.pyがサーバー本体を呼び出すためserver.[exe/jar/bat]を自身で起動する必要はありません。
 
 > [!WARNING]
-> server.jar(java edition)を起動する場合基本的には`java -Xmx4048M -Xms1024M -Dfile.encoding=UTF-8 -jar server.jar nogui`と記述されたbatファイル(Windowsの場合)を利用してください
+> server.jar(java edition)を起動する場合基本的には`java -Xmx4048M -Xms1024M -Dfile.encoding=UTF-8 -jar server.jar nogui`と記述されたbatファイル(Windowsの場合)を作成しserver_pathに記載してください。
 
 ### .config
 
@@ -105,7 +105,7 @@ tokenを記述し、configのserver_pathにserver.[exe/jar]へのパスを記述
         "w",
         "tell"
     ],
-    "server_name": "bedrock_server.exe"
+    "server_name": "bedrock_server.exe",
     "log": {
         "server": true,
         "all": false
