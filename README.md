@@ -44,12 +44,15 @@ discordを用いて特定のサーバーを管理できます。
 |----|----|----|
 |Java vanilla 1.9.4|2024/06/26|Windows 11|
 |Java vanilla 1.19|2024/06/26|Windows 11|
+|Java vanilla 1.19.4|2024/07/31|Windows 11|
 |Java fabric 1.20.1|2024/06/26|Windows 11|
-|Bedrock dedicated server 1.21|2024/06/14|Windows 11 & Ubuntu(wsl2)|
+|Bedrock dedicated server 1.21|2024/07/30|Windows 11 & Ubuntu(wsl2)|
 
 java版serverをWindowsで起動する際一般に利用されるような以下の内容のbatをconfigのserver_nameに設定しています。noguiオプションが無い場合現在/stop等が利用できません。(fabric : start.bat , forge : run.bat)
 
-`java -Xmx4048M -Xms1024M -jar server.jar nogui`
+<span style="color: red; ">-Dfile.encoding=UTF-8が存在しない場合一部環境で特殊文字等が正常に表示されません</span>
+
+`java -Xmx4048M -Xms1024M -Dfile.encoding=UTF-8 -jar server.jar nogui`
 
 ### 確認済み環境
 
@@ -155,6 +158,10 @@ server.pyはサーバ本体と同じ改装に配置することを推奨しま�
 2024/06/10 更新前にupdate.pyの削除が必要です。6/10以前のserver.pyを利用している場合はupdate.pyを削除してください。
 
 今後の更新ではupdate.pyを自動更新するように変更しています。
+
+### 2024/07/31 エンコード失敗時にクラッシュする問題の修正
+
+・エンコードに失敗した場合失敗した文字列を置換して表示するようになりました。
 
 ### 2024/06/29 .configに項目langを追加
 
