@@ -16,6 +16,7 @@ from shutil import copystat,Error,copy2
 import sys
 import logging
 import requests
+import json
 
 #プロンプトを送る
 print()
@@ -59,17 +60,18 @@ def wait_for_keypress():
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
             exit()
 
+config_file_place = now_path + "/" + ".config"
+
 def make_config():
-    import json
-    if not os.path.exists(now_path + "/" + ".config"):
-        file = open(now_path + "/"  + ".config","w")
+    if not os.path.exists(config_file_place):
+        file = open(config_file_place,"w")
         server_path = now_path
         default_backup_path = server_path + "/../backup/" + server_path.split("/")[-1]
         if not os.path.exists(default_backup_path):
             os.makedirs(default_backup_path)
         default_backup_path = os.path.realpath(default_backup_path) + "/"
         print("default backup path: " + default_backup_path)
-        config_dict = {"allow":{"ip":True},"server_path":now_path + "/","allow_mccmd":["list","whitelist","tellraw","w","tell"],"server_name":"bedrock_server.exe","log":{"server":True,"all":False},"backup_path": default_backup_path,"mc":True,"lang":"en"}
+        config_dict = {"allow":{"ip":True},"server_path":now_path + "/","allow_mccmd":["list","whitelist","tellraw","w","tell"],"server_name":"bedrock_server.exe","log":{"server":True,"all":False},"backup_path": default_backup_path,"mc":True,"lang":"en","force_admin":[]}
         json.dump(config_dict,file,indent=4)
         config_changed = True
     else:
@@ -114,6 +116,8 @@ def make_config():
                 cfg["mc"] = True
             if "lang" not in cfg:
                 cfg["lang"] = "en"
+            if "force_admin" not in cfg:
+                cfg["force_admin"] = []
             return cfg
         if config_dict != check(config_dict.copy()):
             check(config_dict)
@@ -124,8 +128,21 @@ def make_config():
             file.close()
         else: config_changed = False
     return config_dict,config_changed
+def to_config_safe(config):
+    #"force_admin"に重複があれば削除する
+    save = False
+    if len(config["force_admin"]) > len(set(config["force_admin"])):
+        config["force_admin"] = list(set(config["force_admin"]))
+        save = True
+    if save:
+        file = open(config_file_place,"w")
+        json.dump(config,file,indent=4)
+        file.close()
 
 config,config_changed = make_config()
+#整合性チェック
+to_config_safe(config)
+#ロガー作成前なので最小限の読み込み
 try:
     log = config["log"]
     server_path = config["server_path"]
@@ -328,7 +345,7 @@ def create_logger(name,console_formatter=console_formatter,file_formatter=file_f
     logger.addHandler(console)
     if log["all"]:
         f = time + ".log"
-        file = logging.FileHandler(now_path + "/logs/all " + f)
+        file = logging.FileHandler(now_path + "/logs/all " + f,encoding="utf-8")
         file.setLevel(logging.DEBUG)
         file.setFormatter(file_formatter)
         logger.addHandler(file)
@@ -352,6 +369,8 @@ replace_logger = create_logger("replace")
 ip_logger = create_logger("ip")
 sys_logger = create_logger("sys")
 log_logger = create_logger("log")
+permission_logger = create_logger("permission")
+admin_logger = create_logger("admin")
 minecraft_logger = create_logger("minecraft",Formatter.MinecraftFormatter(f'{Color.BOLD + Color.BG_BLACK}%(asctime)s %(levelname)s %(name)s: %(message)s', dt_fmt),Formatter.MinecraftConsoleFormatter('%(asctime)s %(levelname)s %(name)s: %(message)s', dt_fmt))
 #--------------------------------------------------------------------------------------------
 
@@ -368,6 +387,7 @@ try:
     now_dir = server_path.replace("\\","/").split("/")[-2]
     backup_path = config["backup_path"]
     lang = config["lang"]
+    bot_admin = set(config["force_admin"])
 except KeyError:
     sys_logger.error("config file is broken. please delete .config and try again.")
     wait_for_keypress()
@@ -463,29 +483,48 @@ if config["mc"]:
     properties = properties_to_dict(server_path + "server.properties")
     sys_logger.info("read properties file -> " + server_path + "server.properties")
 
+# 権限データ
+COMMAND_PERMISSION = {
+    "/stop       ":1,
+    "/start      ":1,
+    "/exit       ":1,
+    "/cmd        ":1,
+    "/help       ":0,
+    "/backup     ":1,
+    "/replace    ":1,
+    "/ip         ":0,
+    "/logs       ":1,
+    "/force_admin":2,
+    "/permission ":0,
+}
+
 # テキストデータ領域-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 #help
 HELP_MSG = {
     "ja":{
-        "/stop   ":"サーバーを停止します。但し起動していない場合にはエラーメッセージを返します。",
-        "/start  ":"サーバーを起動します。但し起動している場合にはエラーメッセージを返します。",
-        "/exit   ":"botを終了します。サーバーを停止してから実行してください。終了していない場合にはエラーメッセージを返します。\nまたこのコマンドを実行した場合次にbotが起動するまですべてのコマンドが無効になります。",
-        "/cmd    ":f"/cmd <mcコマンド> を用いてサーバーコンソール上でコマンドを実行できます。使用できるコマンドは{allow_cmd}です。",
-        "/backup ":"/backup [ワールド名] でワールドデータをバックアップします。ワールド名を省略した場合worldsをコピーします。サーバーを停止した状態で実行してください",
-        "/replace":"/replace <py file> によってbotのコードを置き換えます。",
-        "/ip     ":"サーバーのIPアドレスを表示します。",
-        "/logs   ":"サーバーのログを表示します。引数を与えた場合にはそのファイルを、与えられなければ動作中に得られたログから最新の10件を返します。",
+        "/stop       ":"サーバーを停止します。但し起動していない場合にはエラーメッセージを返します。",
+        "/start      ":"サーバーを起動します。但し起動している場合にはエラーメッセージを返します。",
+        "/exit       ":"botを終了します。サーバーを停止してから実行してください。終了していない場合にはエラーメッセージを返します。\nまたこのコマンドを実行した場合次にbotが起動するまですべてのコマンドが無効になります。",
+        "/cmd        ":f"/cmd <mcコマンド> を用いてサーバーコンソール上でコマンドを実行できます。使用できるコマンドは{allow_cmd}です。",
+        "/backup     ":"/backup [ワールド名] でワールドデータをバックアップします。ワールド名を省略した場合worldsをコピーします。サーバーを停止した状態で実行してください",
+        "/replace    ":"/replace <py file> によってbotのコードを置き換えます。",
+        "/ip         ":"サーバーのIPアドレスを表示します。",
+        "/logs       ":"サーバーのログを表示します。引数を与えた場合にはそのファイルを、与えられなければ動作中に得られたログから最新の10件を返します。",
+        "/force_admin":"/force_admin <add/remove> <user> で、userのbot操作権利を付与/剥奪することができます。",
+        "/permission ":"/permission <user> で、userのbot操作権利を表示します。",
     },
     "en":{
-        "/stop   ":"Stop the server. If the server is not running, an error message will be returned.",
-        "/start  ":"Start the server. If the server is running, an error message will be returned.",
-        "/exit   ":"Exit the bot. Stop the server first and then run the command. If the server is not running, an error message will be returned.\n",
-        "/cmd    ":f"/cmd <mc command> can be used to execute commands in the server console. The available commands are {allow_cmd}.",
-        "/backup ":"/backup [world name] copies the world data. If no world name is given, the worlds will be copied.",
-        "/replace":"/replace <py file> replaces the bot's code.",
-        "/ip     ":"The server's IP address will be displayed to discord.",
-        "/logs   ":"Display the server's logs. If an argument is given, that file will be returned. If no argument is given, the latest 10 logs will be returned.",
+        "/stop       ":"Stop the server. If the server is not running, an error message will be returned.",
+        "/start      ":"Start the server. If the server is running, an error message will be returned.",
+        "/exit       ":"Exit the bot. Stop the server first and then run the command. If the server is not running, an error message will be returned.\n",
+        "/cmd        ":f"/cmd <mc command> can be used to execute commands in the server console. The available commands are {allow_cmd}.",
+        "/backup     ":"/backup [world name] copies the world data. If no world name is given, the worlds will be copied.",
+        "/replace    ":"/replace <py file> replaces the bot's code.",
+        "/ip         ":"The server's IP address will be displayed to discord.",
+        "/logs       ":"Display the server's logs. If an argument is given, that file will be returned. If no argument is given, the latest 10 logs will be returned.",
+        "/force_admin":"/force_admin <add/remove> <user> gives or removes user's bot operation rights.",
+        "/permission ":"/permission <user> displays the user's bot operation rights.",
     },
 }
     
@@ -501,6 +540,10 @@ COMMAND_DESCRIPTION = {
         "ip":"サーバーのIPアドレスを表示します。",
         "logs":"サーバーのログを表示します。引数にはファイル名を指定します。入力しない場合は最新の10件のログを返します。",
         "help":"このbotのコマンド一覧を表示します。",
+        "admin":{
+            "force":"選択したユーザに対してbotをdiscord管理者と同等の権限で操作できるようにします。",
+        },
+        "permission":"選択したユーザに対してbot操作権限を表示します。",
     },
     "en":{
         "stop":"Stop the server.",
@@ -512,6 +555,10 @@ COMMAND_DESCRIPTION = {
         "ip":"The server's IP address will be displayed to discord.",
         "logs":"Display server logs. With an argument, return that file. Without, return the latest 10 logs.",
         "help":"Display this bot's command list.",
+        "admin":{
+            "force":"Force the selected user to have the same permissions as the bot, as discord administrator.",
+        },
+        "permission":"Display the bot operation rights of the selected user.",
     },
 }
 
@@ -555,6 +602,17 @@ if lang == "ja":
         },
         "error":{
             "error_base":"エラーが発生しました。\n",
+        },
+        "admin":{
+            "force":{
+                "already_added":"このユーザーはすでにbotの管理者権限を持っています",
+                "add_success":"{}にbotの管理者権限を与えました",
+                "remove_success":"{}からbotの管理者権限を剥奪しました",
+                "already_removed":"このユーザーはbotの管理者権限を持っていません",
+            },
+        },
+        "permission":{
+            "success":"{} の権限 : \ndiscord管理者権限 : {}\nbot管理者権限 : {}",
         },
     }
     ACTIVITY_NAME = {
@@ -603,6 +661,17 @@ elif lang == "en":
         "error":{
             "error_base":"An error has occurred.\n",
         },
+        "admin":{
+            "force":{
+                "already_added":"The user has already been added as an administrator",
+                "add_success":"Added as an administrator to {}",
+                "already_removed":"The user has already been removed as an administrator",
+                "remove_success":"Removed as an administrator from {}",
+            },
+        },
+        "permission":{
+            "success":"{}'s permission : \ndiscord administrator permission : {}\nbot administrator permission : {}",
+        },
     }
     ACTIVITY_NAME = {
         "starting":"Server go!",
@@ -621,10 +690,19 @@ def make_send_help():
     send_help += "```"
 make_send_help()
 
-async def is_administrator(interaction: discord.Interaction,logger: logging.Logger) -> bool:
-    if not interaction.user.guild_permissions.administrator:
-        logger.error('permission denied')
-        await interaction.response.send_message(RESPONSE_MSG["other"]["no_permission"],ephemeral = True)
+async def not_enough_permission(interaction: discord.Interaction,logger: logging.Logger) -> bool:
+    logger.error('permission denied')
+    await interaction.response.send_message(RESPONSE_MSG["other"]["no_permission"],ephemeral = True)
+
+
+async def is_administrator(user: discord.User) -> bool:
+    if not user.guild_permissions.administrator:
+        return False
+    return True
+
+async def is_force_administrator(user: discord.User) -> bool:
+    #user idがforce_adminに含まれないなら
+    if user.id not in config["force_admin"]:
         return False
     return True
 
@@ -645,6 +723,24 @@ async def is_stopped_server(interaction: discord.Interaction,logger: logging.Log
         await interaction.response.send_message(RESPONSE_MSG["other"]["is_not_running"],ephemeral = True)
         return True
     return False
+
+async def reload_config():
+    import json
+    with open(config_file_place, 'r') as f:
+        global config
+        config = json.load(f)
+        #TODO
+    
+
+async def rewrite_config(config: dict) -> bool:
+    try:
+        with open(config_file_place, 'w') as f:
+            import json
+            json.dump(config, f,indent=4)
+        return True
+    except:
+        return False
+
 
 async def dircp_discord(src, dst, interaction: discord.Interaction, symlinks=False) -> None:
     global exist_files, copyed_files
@@ -779,7 +875,10 @@ async def start(interaction: discord.Interaction):
 async def stop(interaction: discord.Interaction):
     global process
     #管理者権限を要求
-    if not await is_administrator(interaction,stop_logger): return
+    if not await is_administrator(interaction.user) and not await is_force_administrator(interaction.user): 
+        #両方not(権限がないなら)
+        await not_enough_permission(interaction,stop_logger)
+        return
     #サーバー起動確認
     if await is_stopped_server(interaction,stop_logger): return
     stop_logger.info('server stopping')
@@ -794,12 +893,66 @@ async def stop(interaction: discord.Interaction):
             break
         await asyncio.sleep(1)
 
+#/admin force <add/remove>
+@tree.command(name="admin",description=COMMAND_DESCRIPTION[lang]["admin"]["force"])
+@app_commands.choices(
+    mode = [
+        app_commands.Choice(name="add",value="add"),
+        app_commands.Choice(name="remove",value="remove"),
+    ],
+    perm = [
+        app_commands.Choice(name="force",value="force"),
+    ]
+)
+async def admin(interaction: discord.Interaction,perm: str,mode:str,user:discord.User):
+    async def force():
+        async def read_force_admin():
+            global bot_admin
+            bot_admin = set(config["force_admin"])
+        if mode == "add":
+            if user.id in config["force_admin"]:
+                await interaction.response.send_message(RESPONSE_MSG["admin"]["force"]["already_added"])
+                return
+            config["force_admin"].append(user.id)
+            #configファイルを変更する
+            await rewrite_config(config)
+            await read_force_admin()
+            await interaction.response.send_message(RESPONSE_MSG["admin"]["force"]["add_success"].format(user))
+        elif mode == "remove":
+            if user.id not in config["force_admin"]:
+                await interaction.response.send_message(RESPONSE_MSG["admin"]["force"]["already_removed"])
+                return
+            config["force_admin"].remove(user.id)
+            #configファイルを変更する
+            await rewrite_config(config)
+            await read_force_admin()
+            await interaction.response.send_message(RESPONSE_MSG["admin"]["force"]["remove_success"].format(user))
+        admin_logger.info(f"exec force admin {mode} {user}")
+    if perm == "force": await force()
+
+#/permission <user>
+@tree.command(name="permission",description=COMMAND_DESCRIPTION[lang]["permission"])
+async def permission(interaction: discord.Interaction,user:discord.User,detail:bool):
+    value = {"admin":"☐","force_admin":"☐"}
+    if await is_administrator(user): value["admin"] = "☑"
+    if await is_force_administrator(user): value["force_admin"] = "☑"
+    if detail:
+        my_perm_level = 0 if value["admin"] == "☐" and value["force_admin"] == "☐" else 1 if value["admin"] == "☐" else 2
+        can_use_cmd = {f"{key}":"☑" if COMMAND_PERMISSION[key] <= my_perm_level else "☐" for key in COMMAND_PERMISSION}
+        await interaction.response.send_message(RESPONSE_MSG["permission"]["success"].format(user,value["admin"],value["force_admin"]) + "\n```\n"+"\n".join([f"{key} : {value}" for key,value in can_use_cmd.items()]) + "\n```")
+    else:
+        await interaction.response.send_message(RESPONSE_MSG["permission"]["success"].format(user,value["admin"],value["force_admin"]))
+    permission_logger.info("send permission info : " + str(user.id) + f"({user})")
+    
+
 #/command <mc command>
 @tree.command(name="cmd",description=COMMAND_DESCRIPTION[lang]["cmd"])
 async def cmd(interaction: discord.Interaction,command:str):
     global is_back_discord,cmd_logs
     #管理者権限を要求
-    if not await is_administrator(interaction,cmd_logger): return
+    if not await is_administrator(interaction.user) and not await is_force_administrator(interaction.user): 
+        await not_enough_permission(interaction,cmd_logger)
+        return
     #サーバー起動確認
     if await is_stopped_server(interaction,cmd_logger): return
     #コマンドの利用許可確認
@@ -826,7 +979,9 @@ async def cmd(interaction: discord.Interaction,command:str):
 async def backup(interaction: discord.Interaction,world_name:str = "worlds"):
     global exist_files, copyed_files
     #管理者権限を要求
-    if not await is_administrator(interaction,backup_logger): return
+    if not await is_administrator(interaction.user) and not await is_force_administrator(interaction.user):
+        await not_enough_permission(interaction,backup_logger) 
+        return
     #サーバー起動確認
     if await is_running_server(interaction,backup_logger): return
     backup_logger.info('backup started')
@@ -844,7 +999,9 @@ async def backup(interaction: discord.Interaction,world_name:str = "worlds"):
 @tree.command(name="replace",description=COMMAND_DESCRIPTION[lang]["replace"])
 async def replace(interaction: discord.Interaction,py_file:discord.Attachment):
     #管理者権限を要求
-    if not await is_administrator(interaction,replace_logger): return
+    if not await is_administrator(interaction.user) and not await is_force_administrator(interaction.user):
+        await not_enough_permission(interaction,replace_logger)
+        return
     #サーバー起動確認
     if await is_running_server(interaction,replace_logger): return
     replace_logger.info('replace started')
@@ -905,7 +1062,9 @@ async def get_log_files_choice_format(interaction: discord.Interaction, current:
 @app_commands.autocomplete(filename = get_log_files_choice_format)
 async def logs(interaction: discord.Interaction,filename:str = None):
     #管理者権限を要求
-    if not await is_administrator(interaction,log_logger): return
+    if not await is_administrator(interaction.user) and not await is_force_administrator(interaction.user): 
+        await not_enough_permission(interaction,log_logger)
+        return
     # discordにログを送信
     if filename is None:
         await interaction.response.send_message("```ansi\n" + "\n".join(log_msg) + "\n```")
@@ -946,7 +1105,9 @@ async def help(interaction: discord.Interaction):
 @tree.command(name="exit",description=COMMAND_DESCRIPTION[lang]["exit"])
 async def exit(interaction: discord.Interaction):
     #管理者権限を要求
-    if not await is_administrator(interaction,exit_logger): return
+    if not await is_administrator(interaction.user) and not await is_force_administrator(interaction.user): 
+        await not_enough_permission(interaction,exit_logger)
+        return
     #サーバが動いているなら終了
     if await is_running_server(interaction,exit_logger): return
     await interaction.response.send_message(RESPONSE_MSG["exit"]["success"])
