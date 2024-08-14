@@ -69,7 +69,7 @@ def make_config():
             os.makedirs(default_backup_path)
         default_backup_path = os.path.realpath(default_backup_path) + "/"
         print("default backup path: " + default_backup_path)
-        config_dict = {"allow":{"ip":True},"server_path":now_path + "/","allow_mccmd":["list","whitelist","tellraw","w","tell"],"server_name":"bedrock_server.exe","log":{"server":True,"all":False},"backup_path": default_backup_path,"mc":True}
+        config_dict = {"allow":{"ip":True},"server_path":now_path + "/","allow_mccmd":["list","whitelist","tellraw","w","tell"],"server_name":"bedrock_server.exe","log":{"server":True,"all":False},"backup_path": default_backup_path,"mc":True,"lang":"en"}
         json.dump(config_dict,file,indent=4)
         config_changed = True
     else:
@@ -112,6 +112,8 @@ def make_config():
                     os.makedirs(cfg["backup_path"])
             if "mc" not in cfg:
                 cfg["mc"] = True
+            if "lang" not in cfg:
+                cfg["lang"] = "en"
             return cfg
         if config_dict != check(config_dict.copy()):
             check(config_dict)
@@ -365,6 +367,7 @@ try:
     log = config["log"]
     now_dir = server_path.replace("\\","/").split("/")[-2]
     backup_path = config["backup_path"]
+    lang = config["lang"]
 except KeyError:
     sys_logger.error("config file is broken. please delete .config and try again.")
     wait_for_keypress()
@@ -440,46 +443,188 @@ is_back_discord = False
 #java properties の読み込み
 def properties_to_dict(filename):
     properties = {}
-    with open(filename) as file:
-        for line in file:
-            line = line.strip()
-            if line and not line.startswith('#'):
-                if line.startswith(' ') or line.startswith('\t'):
-                    line = line[1:]
-                key, value = line.split('=', 1)
-                properties[key] = value
-    return properties
-    
+    try:
+        with open(filename) as file:
+            for line in file:
+                line = line.strip()
+                if line and not line.startswith('#'):
+                    if line.startswith(' ') or line.startswith('\t'):
+                        line = line[1:]
+                    key, value = line.split('=', 1)
+                    properties[key] = value
+        return properties
+    except Exception as e:#ファイルが存在しなければ存在しないことを出力して終了
+        sys_logger.error(e)
+        sys_logger.info("not exist server.properties file in " + server_path + ". if you are not using a minecraft server, please set mc to false in .config .if not, restart it and server.properties should be generated in the server hierarchy.")
+        return {}
+
 #minecraftサーバーであればpropertiesを読み込む
 if config["mc"]:
     properties = properties_to_dict(server_path + "server.properties")
     sys_logger.info("read properties file -> " + server_path + "server.properties")
 
+# テキストデータ領域-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 #help
-help_str = {
-    "/stop   ":"サーバーを停止します。但し起動していない場合にはエラーメッセージを返します。",
-    "/start  ":"サーバーを起動します。但し起動している場合にはエラーメッセージを返します。",
-    "/exit   ":"botを終了します。サーバーを停止してから実行してください。終了していない場合にはエラーメッセージを返します。\nまたこのコマンドを実行した場合次にbotが起動するまですべてのコマンドが無効になります。",
-    "/cmd    ":f"/cmd <mcコマンド> を用いてサーバーコンソール上でコマンドを実行できます。使用できるコマンドは{allow_cmd}です。",
-    "/backup ":"/backup [ワールド名] でワールドデータをバックアップします。ワールド名を省略した場合worldsをコピーします。サーバーを停止した状態で実行してください",
-    "/replace":"/replace <py file> によってbotのコードを置き換えます。",
-    "/ip     ":"サーバーのIPアドレスを表示します。",
-    "/logs   ":"サーバーのログを表示します。引数を与えた場合にはそのファイルを、与えられなければ動作中に得られたログから最新の10件を返します。",
+HELP_MSG = {
+    "ja":{
+        "/stop   ":"サーバーを停止します。但し起動していない場合にはエラーメッセージを返します。",
+        "/start  ":"サーバーを起動します。但し起動している場合にはエラーメッセージを返します。",
+        "/exit   ":"botを終了します。サーバーを停止してから実行してください。終了していない場合にはエラーメッセージを返します。\nまたこのコマンドを実行した場合次にbotが起動するまですべてのコマンドが無効になります。",
+        "/cmd    ":f"/cmd <mcコマンド> を用いてサーバーコンソール上でコマンドを実行できます。使用できるコマンドは{allow_cmd}です。",
+        "/backup ":"/backup [ワールド名] でワールドデータをバックアップします。ワールド名を省略した場合worldsをコピーします。サーバーを停止した状態で実行してください",
+        "/replace":"/replace <py file> によってbotのコードを置き換えます。",
+        "/ip     ":"サーバーのIPアドレスを表示します。",
+        "/logs   ":"サーバーのログを表示します。引数を与えた場合にはそのファイルを、与えられなければ動作中に得られたログから最新の10件を返します。",
+    },
+    "en":{
+        "/stop   ":"Stop the server. If the server is not running, an error message will be returned.",
+        "/start  ":"Start the server. If the server is running, an error message will be returned.",
+        "/exit   ":"Exit the bot. Stop the server first and then run the command. If the server is not running, an error message will be returned.\n",
+        "/cmd    ":f"/cmd <mc command> can be used to execute commands in the server console. The available commands are {allow_cmd}.",
+        "/backup ":"/backup [world name] copies the world data. If no world name is given, the worlds will be copied.",
+        "/replace":"/replace <py file> replaces the bot's code.",
+        "/ip     ":"The server's IP address will be displayed to discord.",
+        "/logs   ":"Display the server's logs. If an argument is given, that file will be returned. If no argument is given, the latest 10 logs will be returned.",
+    },
 }
-send_help = "```\n"
+    
+
+COMMAND_DESCRIPTION = {
+    "ja":{
+        "stop":"サーバーを停止します。",
+        "start":"サーバーを起動します。",
+        "exit":"botを終了します。",
+        "cmd":"サーバーにマインクラフトコマンドを送信します。",
+        "backup":"ワールドデータをバックアップします。引数にはワールドファイルの名前を指定します。入力しない場合worldsが選択されます。",
+        "replace":"このbotのコードを<py file>に置き換えます。このコマンドはbotを破壊する可能性があります。",
+        "ip":"サーバーのIPアドレスを表示します。",
+        "logs":"サーバーのログを表示します。引数にはファイル名を指定します。入力しない場合は最新の10件のログを返します。",
+        "help":"このbotのコマンド一覧を表示します。",
+    },
+    "en":{
+        "stop":"Stop the server.",
+        "start":"Start the server.",
+        "exit":"Exit the bot.",
+        "cmd":"Send a Minecraft command to the server.",
+        "backup":"Copy the world data. If no argument is given, the worlds will be copied.",
+        "replace":"Replace the bot's code with <py file>.",
+        "ip":"The server's IP address will be displayed to discord.",
+        "logs":"Display server logs. With an argument, return that file. Without, return the latest 10 logs.",
+        "help":"Display this bot's command list.",
+    },
+}
+
+#今後も大きくなることが予想されるので、ここで条件分岐する
+if lang == "ja":
+    send_help = "詳細なHelpはこちらを参照してください\n<https://github.com/mikatan-mikan/server-bot/blob/main/README.md#%E3%82%B3%E3%83%9E%E3%83%B3%E3%83%89%E4%B8%80%E8%A6%A7>\n"
+    RESPONSE_MSG = {
+        "other":{
+            "no_permission":"管理者権限を持っていないため実行できません",
+            "is_running":"サーバーが起動しているため実行できません",
+            "is_not_running":"サーバーが起動していないため実行できません",
+        },
+        "stop":{
+            "success":"サーバーを停止します",
+        },
+        "start":{
+            "success":"サーバーを起動します",
+        },
+        "cmd":{
+            "skipped_cmd":"コマンドが存在しない、または許可されないコマンドです",
+        },
+        "backup":{
+            "now_backup":"バックアップ中・・・",
+            "data_not_found":"データが見つかりません",
+            "success":"バックアップが完了しました！",
+        },
+        "replace":{
+            "progress":"更新プログラムの適応中・・・",
+        },
+        "ip":{
+            "not_allow":"このコマンドはconfigにより実行を拒否されました",
+            "get_ip_failed":"IPアドレスを取得できません",
+            "msg_startwith":"サーバーIP : "
+        },
+        "logs":{
+            "cant_access_other_dir":"他のディレクトリにアクセスすることはできません。この操作はログに記録されます。",
+            "not_found":"指定されたファイルが見つかりません。この操作はログに記録されます。",
+        },
+        "exit":{
+            "success":"botを終了します...",
+        },
+        "error":{
+            "error_base":"エラーが発生しました。\n",
+        },
+    }
+    ACTIVITY_NAME = {
+        "starting":"さーばーきどう",
+        "running":"さーばーじっこう",
+        "ending":"さーばーおしまい",
+        "ended":"さーばーとじてる",
+    }
+elif lang == "en":
+    send_help = "Details on the help can be found here\n<https://github.com/mikatan-mikan/server-bot/blob/main/README.md#%E3%82%B3%E3%83%9E%E3%83%B3%E3%83%89%E4%B8%80%E8%A6%A7>\n"
+    RESPONSE_MSG = {
+        "other":{
+            "no_permission":"Permission denied",
+            "is_running":"Server is still running",
+            "is_not_running":"Server is not running",
+        },
+        "stop":{
+            "success":"The server has been stopped",
+        },
+        "start":{
+            "success":"The server has been started",
+        },
+        "cmd":{
+            "skipped_cmd":"The command is not found or not allowed",
+        },
+        "backup":{
+            "now_backup":"Backup in progress",
+            "data_not_found":"Data not found",
+            "success":"Backup complete!",
+        },
+        "replace":{
+            "progress":"Applying update program",
+        },
+        "ip":{
+            "not_allow":"This command is denied by config",
+            "get_ip_failed":"Failed to get IP address",
+            "msg_startwith":"Server IP : "
+        },
+        "logs":{
+            "cant_access_other_dir":"Cannot access other directory. This operation will be logged.",
+            "not_found":"The specified file was not found. This operation will be logged.",
+        },
+        "exit":{
+            "success":"The bot is exiting...",
+        },
+        "error":{
+            "error_base":"An error has occurred.\n",
+        },
+    }
+    ACTIVITY_NAME = {
+        "starting":"Server go!",
+        "running":"Server whoosh!",
+        "ending":"Server stopping!",
+        "ended":"Server stop!",
+    }
+
+# ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 def make_send_help():
     global send_help
-    send_help = "詳細なHelpはこちらを参照してください\n<https://github.com/mikatan-mikan/server-bot/blob/main/README.md#%E3%82%B3%E3%83%9E%E3%83%B3%E3%83%89%E4%B8%80%E8%A6%A7>\n"
     send_help += "```"
-    for key in help_str:
-        send_help += key + " " + help_str[key] + "\n"
+    for key in HELP_MSG[lang]:
+        send_help += key + " " + HELP_MSG[lang][key] + "\n"
     send_help += "```"
 make_send_help()
 
 async def is_administrator(interaction: discord.Interaction,logger: logging.Logger) -> bool:
     if not interaction.user.guild_permissions.administrator:
         logger.error('permission denied')
-        await interaction.response.send_message("管理者権限を持っていないため実行できません")
+        await interaction.response.send_message(RESPONSE_MSG["other"]["no_permission"],ephemeral = True)
         return False
     return True
 
@@ -488,7 +633,7 @@ async def is_running_server(interaction: discord.Interaction,logger: logging.Log
     global process
     if process is not None:
         logger.error('server is still running')
-        await interaction.response.send_message("サーバーが起動しているため実行できません")
+        await interaction.response.send_message(RESPONSE_MSG["other"]["is_running"],ephemeral = True)
         return True
     return False
 
@@ -497,7 +642,7 @@ async def is_stopped_server(interaction: discord.Interaction,logger: logging.Log
     global process
     if process is None:
         logger.error('server is not running')
-        await interaction.response.send_message("サーバーが起動していないため実行できません")
+        await interaction.response.send_message(RESPONSE_MSG["other"]["is_not_running"],ephemeral = True)
         return True
     return False
 
@@ -537,9 +682,9 @@ async def dircp_discord(src, dst, interaction: discord.Interaction, symlinks=Fal
                     copy2(srcname, dstname)
                     copyed_files += 1
                     if copyed_files % send_sens == 0 or copyed_files == exist_files:
-                        now = "バックアップ中・・・"
+                        now = RESPONSE_MSG["backup"]["now_backup"]
                         if copyed_files == exist_files:
-                            now = "バックアップが完了しました！"
+                            now = RESPONSE_MSG["backup"]["success"]
                         await interaction.edit_original_response(content=f"{now}\n```{int((copyed_files / exist_files * bar_width) - 1) * '='}☆{((bar_width) - int(copyed_files / exist_files * bar_width)) * '-'}  ({'{: 5}'.format(copyed_files)} / {'{: 5}'.format(exist_files)}) {'{: 3.3f}'.format(copyed_files / exist_files * 100)}%```")
             except OSError as why:
                 errors.append((srcname, dstname, str(why)))
@@ -558,7 +703,7 @@ async def dircp_discord(src, dst, interaction: discord.Interaction, symlinks=Fal
     await copytree(src, dst, symlinks)
 
 #logger thread
-def server_logger(proc,ret):
+def server_logger(proc:subprocess.Popen,ret):
     global process,is_back_discord 
     if log["server"]:
         file = open(file = server_path + "logs/server " + datetime.now().strftime("%Y-%m-%d_%H_%M_%S") + ".log",mode = "w")
@@ -567,19 +712,17 @@ def server_logger(proc,ret):
             logs = proc.stdout.readline()
         except Exception as e:
             sys_logger.error(e)
-            sys_logger.info("server close")
-            break
-        #ログに\nが含まれない = プロセスが終了している
-        if "\n" not in logs:
-            break
+            continue
+        # プロセスが終了している
+        if logs == '': 
+            if proc.poll() is not None:
+                break
+            continue
         #ログが\nのみであれば不要
         if logs == "\n":
             continue
         #後ろが\nなら削除
-        while True:
-            if logs[-1] != "\n":
-                break
-            logs = logs[:-1]
+        logs = logs.rstrip("\n")
         minecraft_logger.info(logs)
         if log["server"]:
             file.write(logs + "\n")
@@ -587,6 +730,7 @@ def server_logger(proc,ret):
         if is_back_discord:
             cmd_logs.append(logs)
             is_back_discord = False
+    #プロセスを終了させる
     process = None
 
 
@@ -602,35 +746,36 @@ class ServerBootException(Exception):pass
 async def on_ready():
     global process
     ready_logger.info('discord bot logging on')
-    #サーバーの起動
-    await client.change_presence(activity=discord.Game('さーばーきどう'))
-    if process is  None:
-        #server を実行する
-        process = subprocess.Popen([server_path + server_name],cwd=server_path,shell=True,stdin=subprocess.PIPE,stdout=subprocess.PIPE,encoding="utf-8")
-        threading.Thread(target=server_logger,args=(process,deque())).start()
-        ready_logger.info('server starting')
-    else:
-        ready_logger.info('skip server starting because server already running')
-    # アクティビティを設定 
-    new_activity = f"さーばーじっこう" 
-    await client.change_presence(activity=discord.Game(new_activity)) 
-    # スラッシュコマンドを同期 
-    await tree.sync()
+    try:
+        #サーバーの起動
+        await client.change_presence(activity=discord.Game(ACTIVITY_NAME["starting"]))
+        if process is  None:
+            #server を実行する
+            process = subprocess.Popen([server_path + server_name],cwd=server_path,shell=True,stdin=subprocess.PIPE,stdout=subprocess.PIPE,encoding="utf-8")
+            threading.Thread(target=server_logger,args=(process,deque())).start()
+            ready_logger.info('server starting')
+        else:
+            ready_logger.info('skip server starting because server already running')
+        # アクティビティを設定 
+        await client.change_presence(activity=discord.Game(ACTIVITY_NAME["running"])) 
+        # スラッシュコマンドを同期 
+        await tree.sync()
+    except Exception as e:
+        sys_logger.error("error on ready -> ",e)
 
 #start
-@tree.command(name="start",description="サーバーを起動します")
+@tree.command(name="start",description=COMMAND_DESCRIPTION[lang]["start"])
 async def start(interaction: discord.Interaction):
     global process
     if await is_running_server(interaction,start_logger): return
     start_logger.info('server starting')
     process = subprocess.Popen([server_path + server_name],cwd=server_path,shell=True,stdin=subprocess.PIPE,stdout=subprocess.PIPE,encoding="utf-8")
-    await interaction.response.send_message("サーバーを起動します")
+    await interaction.response.send_message(RESPONSE_MSG["start"]["success"])
     threading.Thread(target=server_logger,args=(process,deque())).start()
-    new_activity = f"さーばーじっこう"
-    await client.change_presence(activity=discord.Game(new_activity))
+    await client.change_presence(activity=discord.Game(ACTIVITY_NAME["running"]))
 
 #/stop
-@tree.command(name="stop",description="サーバーを停止します")
+@tree.command(name="stop",description=COMMAND_DESCRIPTION[lang]["stop"])
 async def stop(interaction: discord.Interaction):
     global process
     #管理者権限を要求
@@ -638,14 +783,19 @@ async def stop(interaction: discord.Interaction):
     #サーバー起動確認
     if await is_stopped_server(interaction,stop_logger): return
     stop_logger.info('server stopping')
-    await interaction.response.send_message("サーバーを停止します")
+    await interaction.response.send_message(RESPONSE_MSG["stop"]["success"])
     process.stdin.write("stop\n")
     process.stdin.flush()
-    new_activity = f"さーばーとじてる"
-    await client.change_presence(activity=discord.Game(new_activity)) 
+    await client.change_presence(activity=discord.Game(ACTIVITY_NAME["ending"])) 
+    while True:
+        #終了するまで待つ
+        if process is None:
+            await client.change_presence(activity=discord.Game(ACTIVITY_NAME["ended"])) 
+            break
+        await asyncio.sleep(1)
 
 #/command <mc command>
-@tree.command(name="cmd",description="サーバーにマインクラフトコマンドを送信します")
+@tree.command(name="cmd",description=COMMAND_DESCRIPTION[lang]["cmd"])
 async def cmd(interaction: discord.Interaction,command:str):
     global is_back_discord,cmd_logs
     #管理者権限を要求
@@ -655,7 +805,7 @@ async def cmd(interaction: discord.Interaction,command:str):
     #コマンドの利用許可確認
     if command.split()[0] not in allow_cmd:
         cmd_logger.error('unknown command : ' + command)
-        await interaction.response.send_message("コマンドが存在しない、または許可されないコマンドです")
+        await interaction.response.send_message(RESPONSE_MSG["cmd"]["skipped_cmd"])
         return
     cmd_logger.info("run command : " + command)
     process.stdin.write(command + "\n")
@@ -672,7 +822,7 @@ async def cmd(interaction: discord.Interaction,command:str):
         break
 
 #/backup()
-@tree.command(name="backup",description="ワールドデータをバックアップします。引数にはワールドファイルの名前を指定します。入力しない場合worldsが選択されます。")
+@tree.command(name="backup",description=COMMAND_DESCRIPTION[lang]["backup"])
 async def backup(interaction: discord.Interaction,world_name:str = "worlds"):
     global exist_files, copyed_files
     #管理者権限を要求
@@ -680,13 +830,18 @@ async def backup(interaction: discord.Interaction,world_name:str = "worlds"):
     #サーバー起動確認
     if await is_running_server(interaction,backup_logger): return
     backup_logger.info('backup started')
-    await interaction.response.send_message("progress...\n")
-    # discordにcopyed_files / exist_filesをプログレスバーで
-    await dircp_discord(server_path + world_name,backup_path + "/",interaction)
-    backup_logger.info('backup done')
+    #server_path + world_namの存在確認
+    if os.path.exists(server_path + world_name):
+        await interaction.response.send_message("progress...\n")
+        # discordにcopyed_files / exist_filesをプログレスバーで
+        await dircp_discord(server_path + world_name,backup_path + "/",interaction)
+        backup_logger.info('backup done')
+    else:
+        backup_logger.error('data not found : ' + server_path + world_name)
+        await interaction.response.send_message(RESPONSE_MSG["backup"]["data_not_found"] + ":" + server_path + world_name)
 
 #/replace <py file>
-@tree.command(name="replace",description="このbotのコードを<py file>に置き換えます。このコマンドはbotを破壊する可能性があります。")
+@tree.command(name="replace",description=COMMAND_DESCRIPTION[lang]["replace"])
 async def replace(interaction: discord.Interaction,py_file:discord.Attachment):
     #管理者権限を要求
     if not await is_administrator(interaction,replace_logger): return
@@ -698,7 +853,7 @@ async def replace(interaction: discord.Interaction,py_file:discord.Attachment):
         f.write((await py_file.read()).decode("utf-8").replace("\r\n","\n"))
     # discordにコードを置き換える
     replace_logger.info('replace done')
-    await interaction.response.send_message("更新プログラムの適応中・・・")
+    await interaction.response.send_message(RESPONSE_MSG["replace"]["progress"])
     response = await interaction.original_response()
     #interaction id を保存
     msg_id = str(response.id)
@@ -708,10 +863,10 @@ async def replace(interaction: discord.Interaction,py_file:discord.Attachment):
     os.execv(sys.executable,["python3",now_path + "/" + "update.py",temp_path + "/new_source.py",msg_id,channel_id,now_file])
 
 #/ip
-@tree.command(name="ip",description="サーバーのIPアドレスを表示します")
+@tree.command(name="ip",description=COMMAND_DESCRIPTION[lang]["ip"])
 async def ip(interaction: discord.Interaction):
     if not allow["ip"]:
-        await interaction.response.send_message("このコマンドはconfigにより実行を拒否されました。")
+        await interaction.response.send_message(RESPONSE_MSG["ip"]["not_allow"])
         ip_logger.error('ip is not allowed')
         return
     # ipをget
@@ -719,14 +874,14 @@ async def ip(interaction: discord.Interaction):
         addr = requests.get("https://api.ipify.org")
     except:
         ip_logger.error('get ip failed')
-        await interaction.response.send_message("IPアドレスを取得できません")
+        await interaction.response.send_message(RESPONSE_MSG["ip"]["get_ip_failed"])
         return
     if config["mc"]:
         ip_logger.info('get ip : ' + addr.text + ":" + properties["server-port"])
-        await interaction.response.send_message("サーバーip : " + addr.text + ":" + properties["server-port"])
+        await interaction.response.send_message(RESPONSE_MSG["ip"]["msg_startwith"] + addr.text + ":" + properties["server-port"])
     else:
         ip_logger.info('get ip : ' + addr.text)
-        await interaction.response.send_message("サーバーip : " + addr.text)
+        await interaction.response.send_message(RESPONSE_MSG["ip"]["msg_startwith"] + addr.text)
 
 
 async def get_log_files_choice_format(interaction: discord.Interaction, current: str):
@@ -735,8 +890,8 @@ async def get_log_files_choice_format(interaction: discord.Interaction, current:
     s_logfiles = os.listdir(server_path + "logs/")
     a_logfiles = os.listdir(now_path + "/logs/")
     logfiles = (s_logfiles + a_logfiles)
-    # current と一致するものを返す & 25個制限を実装
-    logfiles = [i for i in logfiles if current in i][-25:]
+    # current と一致するものを返す & logファイル & 25個制限を実装
+    logfiles = [i for i in logfiles if current in i and i.endswith(".log")][-25:]
     # open("./tmp.txt","w").write("\n".join(logfiles))
     return [
         app_commands.Choice(name = i,value = i) for i in logfiles
@@ -746,7 +901,7 @@ async def get_log_files_choice_format(interaction: discord.Interaction, current:
 # filename : ログファイル名
 # filename == None -> 最新のログ10件
 # filename != None -> server_path + "logs/" または now_path + "logs/"の中を候補表示する
-@tree.command(name="logs",description="botのログを表示します。引数が与えられない場合動作中のログから直近10件を表示します。")
+@tree.command(name="logs",description=COMMAND_DESCRIPTION[lang]["logs"])
 @app_commands.autocomplete(filename = get_log_files_choice_format)
 async def logs(interaction: discord.Interaction,filename:str = None):
     #管理者権限を要求
@@ -755,33 +910,46 @@ async def logs(interaction: discord.Interaction,filename:str = None):
     if filename is None:
         await interaction.response.send_message("```ansi\n" + "\n".join(log_msg) + "\n```")
     else:
-        if filename.startswith("server"):
+        if "/" in filename or "\\" in filename or "%" in filename:
+            log_logger.error('invalid filename : ' + filename + "\n" + f"interaction user / id：{interaction.user} {interaction.user.id}")
+            await interaction.response.send_message(RESPONSE_MSG["logs"]["cant_access_other_dir"])
+            return
+        elif not filename.endswith(".log"):
+            log_logger.error('invalid filename : ' + filename + "\n" + f"interaction user / id：{interaction.user} {interaction.user.id}")
+            await interaction.response.send_message(RESPONSE_MSG["logs"]["not_found"])
+            return
+        elif filename.startswith("server"):
             filename = server_path + "logs/" + filename
         elif filename.startswith("all"):
             filename = now_path + "/logs/" + filename
         else:
             filename = server_path + "logs/" + filename
             if not os.path.exists(filename):
-                filename = now_path + "/logs/" + filename
+                if os.path.exists(now_path + "/logs/" + filename):
+                    filename = now_path + "/logs/" + filename
+                else:
+                    log_logger.error('invalid filename : ' + filename + "\n" + f"interaction user / id：{interaction.user} {interaction.user.id}")
+                    await interaction.response.send_message(RESPONSE_MSG["logs"]["not_found"])
+                    return
         #ファイルを返却
         await interaction.response.send_message(file=discord.File(filename))
     log_ = "Server logs" if filename is None else filename
     log_logger.info(f"sended logs -> {log_}")
 
 #/help
-@tree.command(name="help",description="botのコマンド一覧を表示します")
+@tree.command(name="help",description=COMMAND_DESCRIPTION[lang]["help"])
 async def help(interaction: discord.Interaction):
     await interaction.response.send_message(send_help)
     help_logger.info('help sent')
 
 #/exit
-@tree.command(name="exit",description="botを終了します\nサーバーを停止してから実行してください")
+@tree.command(name="exit",description=COMMAND_DESCRIPTION[lang]["exit"])
 async def exit(interaction: discord.Interaction):
     #管理者権限を要求
     if not await is_administrator(interaction,exit_logger): return
     #サーバが動いているなら終了
     if await is_running_server(interaction,exit_logger): return
-    await interaction.response.send_message("botを終了します...")
+    await interaction.response.send_message(RESPONSE_MSG["exit"]["success"])
     exit_logger.info('exit')
     await client.close()
 
@@ -789,7 +957,7 @@ async def exit(interaction: discord.Interaction):
 @tree.error
 async def on_error(interaction: discord.Interaction, error: Exception):
     sys_logger.error(error)
-    await interaction.response.send_message("エラーが発生しました。\n" + str(error))
+    await interaction.response.send_message(RESPONSE_MSG["error"]["error_base"] + str(error))
 
 # discord.py用のロガーを取得して設定
 discord_logger = logging.getLogger('discord')
