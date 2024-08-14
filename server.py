@@ -492,7 +492,7 @@ COMMAND_PERMISSION = {
     "/cmd        ":1,
     "/help       ":0,
     "/backup     ":1,
-    "/replace    ":1,
+    "/replace    ":2,
     "/ip         ":0,
     "/logs       ":1,
     "/force_admin":2,
@@ -1044,7 +1044,7 @@ async def backup(interaction: discord.Interaction,world_name:str = "worlds"):
 @tree.command(name="replace",description=COMMAND_DESCRIPTION[lang]["replace"])
 async def replace(interaction: discord.Interaction,py_file:discord.Attachment):
     #管理者権限を要求
-    if not await is_administrator(interaction.user) and not await is_force_administrator(interaction.user):
+    if not await is_administrator(interaction.user):
         await not_enough_permission(interaction,replace_logger)
         return
     #サーバー起動確認
