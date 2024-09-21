@@ -284,6 +284,31 @@ class Formatter():
             formatted_message = f"{bold_black_asctime} {colored_levelname} {message}"
             
             return formatted_message
+    class FlaskFormatter(logging.Formatter):
+        COLORS = {
+            'FLASK': Color.BOLD + Color.CYAN,   # Green
+        }
+        RESET = '\033[0m'  # Reset color
+        BOLD_BLACK = Color.BOLD + Color.BLACK  # Bold Black
+
+        def format(self, record):
+            # Format the asctime
+            record.asctime = self.formatTime(record, self.datefmt)
+            bold_black_asctime = f"{self.BOLD_BLACK}{record.asctime}{self.RESET}"
+            
+            # Apply color to the level name only
+            color = self.COLORS["FLASK"]
+            colored_levelname = f"{color}FLASK   {self.RESET}"
+            
+            # Get the formatted message
+            message = record.getMessage()
+
+            message = message + Color.RESET
+            
+            # Create the final formatted message
+            formatted_message = f"{bold_black_asctime} {colored_levelname} {message}"
+            
+            return formatted_message
 
     class DefaultConsoleFormatter(logging.Formatter):
         def format(self, record):
@@ -311,6 +336,21 @@ class Formatter():
             record.asctime = self.formatTime(record, self.datefmt)
             
             padded_levelname = "MC".ljust(Formatter.levelname_size)
+            
+            
+            # Get the formatted message
+            message = record.getMessage()
+            
+            # Create the final formatted message
+            formatted_message = f"{record.asctime} {padded_levelname} {message}"
+            
+            return formatted_message
+    class FlaskConsoleFormatter(logging.Formatter):
+        def format(self, record):
+            # Format the asctime
+            record.asctime = self.formatTime(record, self.datefmt)
+            
+            padded_levelname = "FLASK".ljust(Formatter.levelname_size)
             
             
             # Get the formatted message
@@ -373,6 +413,7 @@ permission_logger = create_logger("permission")
 admin_logger = create_logger("admin")
 lang_logger = create_logger("lang")
 minecraft_logger = create_logger("minecraft",Formatter.MinecraftFormatter(f'{Color.BOLD + Color.BG_BLACK}%(asctime)s %(levelname)s %(name)s: %(message)s', dt_fmt),Formatter.MinecraftConsoleFormatter('%(asctime)s %(levelname)s %(name)s: %(message)s', dt_fmt))
+
 #--------------------------------------------------------------------------------------------
 
 
@@ -1178,6 +1219,28 @@ async def exit(interaction: discord.Interaction):
 async def on_error(interaction: discord.Interaction, error: Exception):
     sys_logger.error(error)
     await interaction.response.send_message(RESPONSE_MSG["error"]["error_base"] + str(error))
+
+#-------------------------------------------------------------------------------------------------------web
+from flask import Flask
+
+
+
+app = Flask(__name__)
+create_logger("werkzeug",Formatter.FlaskFormatter(f'{Color.BOLD + Color.BG_BLACK}%(asctime)s %(levelname)s %(name)s: %(message)s', dt_fmt),Formatter.FlaskConsoleFormatter('%(asctime)s %(levelname)s %(name)s: %(message)s', dt_fmt))
+
+
+
+@app.route('/')
+def index():
+    return "Hello, World!"
+
+def run_web():
+    app.run(host="0.0.0.0",port=8080)
+
+web_thread = threading.Thread(target=run_web)
+web_thread.start()
+#-------------------------------------------------------------------------------------------------------
+
 
 # discord.py用のロガーを取得して設定
 discord_logger = logging.getLogger('discord')
