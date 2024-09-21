@@ -447,9 +447,11 @@ for i in args:
         # pass
 
 #updateプログラムが存在しなければdropboxから./update.pyにコピーする
-if not os.path.exists(now_path + "/" + "update.py") or do_init:
-    url='https://www.dropbox.com/scl/fi/w93o5sndwaiuie0otorm4/update.py?rlkey=gh3gqbt39iwg4afey11p99okp&st=2i9a9dzp&dl=1'
-    filename= now_path + '/' + 'update.py'
+if not os.path.exists(now_path + "/mikanassets"):
+    os.makedirs(now_path + "/mikanassets")
+if not os.path.exists(now_path + "/mikanassets/" + "update.py") or do_init:
+    url='https://www.dropbox.com/scl/fi/xq48bnjifnsllsy6usvsv/update_v1.1.py?rlkey=js8z8r5j75ex4xdbp3i6xscpd&st=smcn7dnl&dl=1'
+    filename= now_path + '/mikanassets/' + 'update.py'
 
     urlData = requests.get(url).content
 
@@ -1113,7 +1115,7 @@ async def replace(interaction: discord.Interaction,py_file:discord.Attachment):
     channel_id = str(interaction.channel_id)
     replace_logger.info("call update.py")
     replace_logger.info('replace args : ' + msg_id + " " + channel_id)
-    os.execv(sys.executable,["python3",now_path + "/" + "update.py",temp_path + "/new_source.py",msg_id,channel_id,now_file])
+    os.execv(sys.executable,["python3",now_path + "/mikanassets/" + "update.py",temp_path + "/new_source.py",msg_id,channel_id,now_file])
 
 #/ip
 @tree.command(name="ip",description=COMMAND_DESCRIPTION[lang]["ip"])
