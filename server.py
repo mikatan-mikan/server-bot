@@ -846,6 +846,8 @@ def server_logger(proc:subprocess.Popen,ret):
     #プロセスを終了させる
     process = None
 
+async def print_user(logger: logging.Logger,user: discord.user):
+    logger.info('command used by ' + str(user))
 
 #ローカルファイルの読み込み結果出力
 sys_logger.info("read token file -> " + now_path + "/" +".token")
@@ -879,6 +881,7 @@ async def on_ready():
 #start
 @tree.command(name="start",description=COMMAND_DESCRIPTION[lang]["start"])
 async def start(interaction: discord.Interaction):
+    await print_user(start_logger,interaction.user)
     global process
     if await is_running_server(interaction,start_logger): return
     start_logger.info('server starting')
@@ -890,6 +893,7 @@ async def start(interaction: discord.Interaction):
 #/stop
 @tree.command(name="stop",description=COMMAND_DESCRIPTION[lang]["stop"])
 async def stop(interaction: discord.Interaction):
+    await print_user(stop_logger,interaction.user)
     global process
     #管理者権限を要求
     if not await is_administrator(interaction.user) and not await is_force_administrator(interaction.user): 
@@ -922,6 +926,7 @@ async def stop(interaction: discord.Interaction):
     ]
 )
 async def admin(interaction: discord.Interaction,perm: str,mode:str,user:discord.User):
+    await print_user(admin_logger,interaction.user)
     async def force():
         async def read_force_admin():
             global bot_admin
@@ -950,6 +955,7 @@ async def admin(interaction: discord.Interaction,perm: str,mode:str,user:discord
 #/permission <user>
 @tree.command(name="permission",description=COMMAND_DESCRIPTION[lang]["permission"])
 async def permission(interaction: discord.Interaction,user:discord.User,detail:bool):
+    await print_user(permission_logger,interaction.user)
     value = {"admin":"☐","force_admin":"☐"}
     if await is_administrator(user): value["admin"] = "☑"
     if await is_force_administrator(user): value["force_admin"] = "☑"
@@ -975,6 +981,7 @@ async def language(interaction: discord.Interaction,language:str):
     permission : discord 管理者 (2)
     lang : str "en"/"ja"
     """
+    await print_user(lang_logger,interaction.user)
     global lang
     #管理者権限を要求
     if not await is_administrator(interaction.user):
@@ -993,6 +1000,7 @@ async def language(interaction: discord.Interaction,language:str):
 #/command <mc command>
 @tree.command(name="cmd",description=COMMAND_DESCRIPTION[lang]["cmd"])
 async def cmd(interaction: discord.Interaction,command:str):
+    await print_user(cmd_logger,interaction.user)
     global is_back_discord,cmd_logs
     #管理者権限を要求
     if not await is_administrator(interaction.user) and not await is_force_administrator(interaction.user): 
@@ -1022,6 +1030,7 @@ async def cmd(interaction: discord.Interaction,command:str):
 #/backup()
 @tree.command(name="backup",description=COMMAND_DESCRIPTION[lang]["backup"])
 async def backup(interaction: discord.Interaction,world_name:str = "worlds"):
+    await print_user(backup_logger,interaction.user)
     global exist_files, copyed_files
     #管理者権限を要求
     if not await is_administrator(interaction.user) and not await is_force_administrator(interaction.user):
@@ -1043,6 +1052,7 @@ async def backup(interaction: discord.Interaction,world_name:str = "worlds"):
 #/replace <py file>
 @tree.command(name="replace",description=COMMAND_DESCRIPTION[lang]["replace"])
 async def replace(interaction: discord.Interaction,py_file:discord.Attachment):
+    await print_user(replace_logger,interaction.user)
     #管理者権限を要求
     if not await is_administrator(interaction.user):
         await not_enough_permission(interaction,replace_logger)
@@ -1067,6 +1077,7 @@ async def replace(interaction: discord.Interaction,py_file:discord.Attachment):
 #/ip
 @tree.command(name="ip",description=COMMAND_DESCRIPTION[lang]["ip"])
 async def ip(interaction: discord.Interaction):
+    await print_user(ip_logger,interaction.user)
     if not allow["ip"]:
         await interaction.response.send_message(RESPONSE_MSG["ip"]["not_allow"])
         ip_logger.error('ip is not allowed')
@@ -1080,7 +1091,7 @@ async def ip(interaction: discord.Interaction):
         return
     if config["mc"]:
         ip_logger.info('get ip : ' + addr.text + ":" + properties["server-port"])
-        await interaction.response.send_message(RESPONSE_MSG["ip"]["msg_startwith"] + addr.text + ":" + properties["server-port"])
+        await interaction.response.send_message(RESPONSE_MSG["ip"]["msg_startwith"] + addr.text + ":" + properties["server-port"] + "\n" + f"(ip:{addr.text} port(ポート):{properties['server-port']})")
     else:
         ip_logger.info('get ip : ' + addr.text)
         await interaction.response.send_message(RESPONSE_MSG["ip"]["msg_startwith"] + addr.text)
@@ -1106,6 +1117,7 @@ async def get_log_files_choice_format(interaction: discord.Interaction, current:
 @tree.command(name="logs",description=COMMAND_DESCRIPTION[lang]["logs"])
 @app_commands.autocomplete(filename = get_log_files_choice_format)
 async def logs(interaction: discord.Interaction,filename:str = None):
+    await print_user(log_logger,interaction.user)
     #管理者権限を要求
     if not await is_administrator(interaction.user) and not await is_force_administrator(interaction.user): 
         await not_enough_permission(interaction,log_logger)
@@ -1143,12 +1155,14 @@ async def logs(interaction: discord.Interaction,filename:str = None):
 #/help
 @tree.command(name="help",description=COMMAND_DESCRIPTION[lang]["help"])
 async def help(interaction: discord.Interaction):
+    await print_user(help_logger,interaction.user)
     await interaction.response.send_message(send_help)
     help_logger.info('help sent')
 
 #/exit
 @tree.command(name="exit",description=COMMAND_DESCRIPTION[lang]["exit"])
 async def exit(interaction: discord.Interaction):
+    await print_user(exit_logger,interaction.user)
     #管理者権限を要求
     if not await is_administrator(interaction.user) and not await is_force_administrator(interaction.user): 
         await not_enough_permission(interaction,exit_logger)
