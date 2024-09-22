@@ -1,3 +1,4 @@
 discord.py
-shutil
 requests
+Flask
+ansi2html

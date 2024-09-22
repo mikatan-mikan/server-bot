@@ -12,11 +12,13 @@ import threading
 import asyncio
 import platform
 import os
-from shutil import copystat,Error,copy2
+from shutil import copystat,Error,copy2,copytree
 import sys
 import logging
 import requests
 import json
+
+use_flask_server = False
 
 #プロンプトを送る
 print()
@@ -284,6 +286,31 @@ class Formatter():
             formatted_message = f"{bold_black_asctime} {colored_levelname} {message}"
             
             return formatted_message
+    class FlaskFormatter(logging.Formatter):
+        COLORS = {
+            'FLASK': Color.BOLD + Color.CYAN,   # Green
+        }
+        RESET = '\033[0m'  # Reset color
+        BOLD_BLACK = Color.BOLD + Color.BLACK  # Bold Black
+
+        def format(self, record):
+            # Format the asctime
+            record.asctime = self.formatTime(record, self.datefmt)
+            bold_black_asctime = f"{self.BOLD_BLACK}{record.asctime}{self.RESET}"
+            
+            # Apply color to the level name only
+            color = self.COLORS["FLASK"]
+            colored_levelname = f"{color}FLASK   {self.RESET}"
+            
+            # Get the formatted message
+            message = record.getMessage()
+
+            message = message + Color.RESET
+            
+            # Create the final formatted message
+            formatted_message = f"{bold_black_asctime} {colored_levelname} {message}"
+            
+            return formatted_message
 
     class DefaultConsoleFormatter(logging.Formatter):
         def format(self, record):
@@ -311,6 +338,21 @@ class Formatter():
             record.asctime = self.formatTime(record, self.datefmt)
             
             padded_levelname = "MC".ljust(Formatter.levelname_size)
+            
+            
+            # Get the formatted message
+            message = record.getMessage()
+            
+            # Create the final formatted message
+            formatted_message = f"{record.asctime} {padded_levelname} {message}"
+            
+            return formatted_message
+    class FlaskConsoleFormatter(logging.Formatter):
+        def format(self, record):
+            # Format the asctime
+            record.asctime = self.formatTime(record, self.datefmt)
+            
+            padded_levelname = "FLASK".ljust(Formatter.levelname_size)
             
             
             # Get the formatted message
@@ -373,6 +415,7 @@ permission_logger = create_logger("permission")
 admin_logger = create_logger("admin")
 lang_logger = create_logger("lang")
 minecraft_logger = create_logger("minecraft",Formatter.MinecraftFormatter(f'{Color.BOLD + Color.BG_BLACK}%(asctime)s %(levelname)s %(name)s: %(message)s', dt_fmt),Formatter.MinecraftConsoleFormatter('%(asctime)s %(levelname)s %(name)s: %(message)s', dt_fmt))
+
 #--------------------------------------------------------------------------------------------
 
 
@@ -406,15 +449,27 @@ for i in args:
         # pass
 
 #updateプログラムが存在しなければdropboxから./update.pyにコピーする
-if not os.path.exists(now_path + "/" + "update.py") or do_init:
-    url='https://www.dropbox.com/scl/fi/w93o5sndwaiuie0otorm4/update.py?rlkey=gh3gqbt39iwg4afey11p99okp&st=2i9a9dzp&dl=1'
-    filename= now_path + '/' + 'update.py'
+if not os.path.exists(now_path + "/mikanassets"):
+    os.makedirs(now_path + "/mikanassets")
+if not os.path.exists(now_path + "/mikanassets/" + "update.py") or do_init:
+    url='https://www.dropbox.com/scl/fi/xq48bnjifnsllsy6usvsv/update_v1.1.py?rlkey=js8z8r5j75ex4xdbp3i6xscpd&st=smcn7dnl&dl=1'
+    filename= now_path + '/mikanassets/' + 'update.py'
 
     urlData = requests.get(url).content
 
     with open(filename ,mode='wb') as f: # wb でバイト型を書き込める
         f.write(urlData)
     #os.system("curl https://www.dropbox.com/scl/fi/w93o5sndwaiuie0otorm4/update.py?rlkey=gh3gqbt39iwg4afey11p99okp&st=2i9a9dzp&dl=1 -o ./update.py")
+if not os.path.exists(now_path + "/mikanassets/web"):
+    os.makedirs(now_path + "/mikanassets/web")
+if not os.path.exists(now_path + "/mikanassets/web/index.html") or do_init:
+    url='https://www.dropbox.com/scl/fi/04to7yrstmgdz9j09ljy2/index.html?rlkey=7q8eu0nooj8zy34dguwwsbkjd&st=4cb6y9sr&dl=1'
+    filename= now_path + '/mikanassets/web/index.html'
+
+    urlData = requests.get(url).content
+
+    with open(filename ,mode='wb') as f: # wb でバイト型を書き込める
+        f.write(urlData)
 
 
 
@@ -695,6 +750,7 @@ async def get_text_dat():
         }
     def make_send_help():
         global send_help
+        send_help += f"web : http://{requests.get("https://api.ipify.org").text}:8080\n" 
         send_help += "```"
         for key in HELP_MSG[lang]:
             send_help += key + " " + HELP_MSG[lang][key] + "\n"
@@ -1072,7 +1128,7 @@ async def replace(interaction: discord.Interaction,py_file:discord.Attachment):
     channel_id = str(interaction.channel_id)
     replace_logger.info("call update.py")
     replace_logger.info('replace args : ' + msg_id + " " + channel_id)
-    os.execv(sys.executable,["python3",now_path + "/" + "update.py",temp_path + "/new_source.py",msg_id,channel_id,now_file])
+    os.execv(sys.executable,["python3",now_path + "/mikanassets/" + "update.py",temp_path + "/new_source.py",msg_id,channel_id,now_file])
 
 #/ip
 @tree.command(name="ip",description=COMMAND_DESCRIPTION[lang]["ip"])
@@ -1172,12 +1228,97 @@ async def exit(interaction: discord.Interaction):
     await interaction.response.send_message(RESPONSE_MSG["exit"]["success"])
     exit_logger.info('exit')
     await client.close()
+    exit(0)
 
 #コマンドがエラーの場合
 @tree.error
 async def on_error(interaction: discord.Interaction, error: Exception):
     sys_logger.error(error)
     await interaction.response.send_message(RESPONSE_MSG["error"]["error_base"] + str(error))
+
+#-------------------------------------------------------------------------------------------------------web
+from flask import Flask, render_template, jsonify, request
+from ansi2html import Ansi2HTMLConverter
+
+
+app = Flask(__name__,template_folder="mikanassets/web")
+create_logger("werkzeug",Formatter.FlaskFormatter(f'{Color.BOLD + Color.BG_BLACK}%(asctime)s %(levelname)s %(name)s: %(message)s', dt_fmt),Formatter.FlaskConsoleFormatter('%(asctime)s %(levelname)s %(name)s: %(message)s', dt_fmt))
+
+
+
+@app.route('/')
+def index():
+    return render_template('index.html', logs = log_msg)
+
+@app.route('/get_console_data')
+def get_console_data():
+    converter = Ansi2HTMLConverter()
+    html_string = converter.convert("\n".join(log_msg))
+
+    try:
+        server_online = process.poll() is None#サーバーが起動している = True
+    except:
+        if process is not None:
+            process.kill()
+        server_online = False
+
+    bot_online = True
+
+    return jsonify({"html_string": html_string, "online_status": {"server": server_online, "bot": bot_online}})
+
+
+@app.route('/flask_start_server', methods=['POST'])
+def flask_start_server():
+    global process
+    if process is not None:
+        start_logger.info("server is already running")
+        return jsonify("server is already running")
+    process = subprocess.Popen([server_path + server_name],cwd=server_path,shell=True,stdin=subprocess.PIPE,stdout=subprocess.PIPE,encoding="utf-8")
+    start_logger.info("started server")
+    threading.Thread(target=server_logger,args=(process,deque())).start()
+    return jsonify("started server!!")
+
+@app.route('/flask_backup_server', methods=['POST'])
+def flask_backup_server():
+    world_name = request.form['fileName']
+    if "\\" in world_name or "/" in world_name:
+        return jsonify(RESPONSE_MSG["backup"]["invalid_filename"])
+    if process is None:
+        if os.path.exists(server_path + world_name):
+            backup_logger.info("backup server")
+            to = backup_path + "/" + datetime.now().strftime('%Y-%m-%d_%H_%M_%S')
+            copytree(server_path + world_name,to)
+            backup_logger.info("backuped server to " + to)
+            return jsonify("backuped server!! " + to)
+        else:
+            backup_logger.info('data not found : ' + server_path + world_name)
+            return jsonify(RESPONSE_MSG["backup"]["data_not_found"] + ":" + server_path + world_name)
+    else:
+        return jsonify("server is already running")
+
+@app.route('/submit_data', methods=['POST'])
+def submit_data():
+    user_input = request.form['userInput']
+    #サーバーが起きてるかを確認
+    if process is None:
+        return jsonify("server is not running")
+    #ifに引っかからない = サーバーが起動している
+    #サーバーの標準入力に入力
+    process.stdin.write(user_input + "\n")
+    process.stdin.flush()
+
+    # データを処理し、結果を返す（例: メッセージを返す）
+    return jsonify(f"result: {user_input}")
+
+def run_web():
+    app.run(host="0.0.0.0",port=8080)
+
+    
+if use_flask_server:
+    web_thread = threading.Thread(target=run_web)
+    web_thread.start()
+#-------------------------------------------------------------------------------------------------------
+
 
 # discord.py用のロガーを取得して設定
 discord_logger = logging.getLogger('discord')
