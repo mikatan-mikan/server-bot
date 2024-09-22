@@ -738,6 +738,7 @@ async def get_text_dat():
         }
     def make_send_help():
         global send_help
+        send_help += f"web : http://{requests.get("https://api.ipify.org").text}:8080\n" 
         send_help += "```"
         for key in HELP_MSG[lang]:
             send_help += key + " " + HELP_MSG[lang][key] + "\n"
