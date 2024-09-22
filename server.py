@@ -458,6 +458,16 @@ if not os.path.exists(now_path + "/mikanassets/" + "update.py") or do_init:
     with open(filename ,mode='wb') as f: # wb でバイト型を書き込める
         f.write(urlData)
     #os.system("curl https://www.dropbox.com/scl/fi/w93o5sndwaiuie0otorm4/update.py?rlkey=gh3gqbt39iwg4afey11p99okp&st=2i9a9dzp&dl=1 -o ./update.py")
+if not os.path.exists(now_path + "/mikanassets/web"):
+    os.makedirs(now_path + "/mikanassets/web")
+if not os.path.exists(now_path + "/mikanassets/web/index.html") or do_init:
+    url='https://www.dropbox.com/scl/fi/04to7yrstmgdz9j09ljy2/index.html?rlkey=7q8eu0nooj8zy34dguwwsbkjd&st=4cb6y9sr&dl=1'
+    filename= now_path + '/mikanassets/web/index.html'
+
+    urlData = requests.get(url).content
+
+    with open(filename ,mode='wb') as f: # wb でバイト型を書き込める
+        f.write(urlData)
 
 
 
@@ -1216,6 +1226,7 @@ async def exit(interaction: discord.Interaction):
     await interaction.response.send_message(RESPONSE_MSG["exit"]["success"])
     exit_logger.info('exit')
     await client.close()
+    exit(0)
 
 #コマンドがエラーの場合
 @tree.error
