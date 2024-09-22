@@ -18,6 +18,8 @@ import logging
 import requests
 import json
 
+use_flask_server = False
+
 #プロンプトを送る
 print()
 
@@ -1311,8 +1313,10 @@ def submit_data():
 def run_web():
     app.run(host="0.0.0.0",port=8080)
 
-web_thread = threading.Thread(target=run_web)
-web_thread.start()
+    
+if use_flask_server:
+    web_thread = threading.Thread(target=run_web)
+    web_thread.start()
 #-------------------------------------------------------------------------------------------------------
 
 
