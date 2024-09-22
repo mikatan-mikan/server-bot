@@ -1,6 +1,7 @@
 import discord 
 from discord import app_commands 
 from discord.ext import tasks
+import waitress.server
 intents = discord.Intents.default() 
 client = discord.Client(intents=intents) 
 tree = app_commands.CommandTree(client)
@@ -1239,6 +1240,8 @@ async def exit(interaction: discord.Interaction):
     await interaction.response.send_message(RESPONSE_MSG["exit"]["success"])
     exit_logger.info('exit')
     await client.close()
+    #waitressサーバーを終了
+
     sys.exit()
 
 #コマンドがエラーの場合
@@ -1344,7 +1347,7 @@ def run_web():
 
     
 if use_flask_server:
-    web_thread = threading.Thread(target=run_web)
+    web_thread = threading.Thread(target=run_web, daemon=True)
     web_thread.start()
 #-------------------------------------------------------------------------------------------------------
 
