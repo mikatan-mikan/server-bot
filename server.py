@@ -369,7 +369,7 @@ dt_fmt = '%Y-%m-%d %H:%M:%S'
 console_formatter = Formatter.ColoredFormatter(f'{Color.BOLD + Color.BG_BLACK}%(asctime)s %(levelname)s %(name)s: %(message)s', dt_fmt)
 file_formatter = Formatter.DefaultConsoleFormatter('%(asctime)s %(levelname)s %(name)s: %(message)s', dt_fmt)
 #/log用のログ保管場所
-log_msg = deque(maxlen=10)
+log_msg = deque(maxlen=19)
 def create_logger(name,console_formatter=console_formatter,file_formatter=file_formatter):
     class DequeHandler(logging.Handler):
         def __init__(self, deque):
