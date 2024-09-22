@@ -1,5 +1,6 @@
 import discord 
 from discord import app_commands 
+from discord.ext import tasks
 intents = discord.Intents.default() 
 client = discord.Client(intents=intents) 
 tree = app_commands.CommandTree(client)
@@ -913,10 +914,20 @@ if config_changed: sys_logger.info("added config because necessary elements were
 
 class ServerBootException(Exception):pass
 
+status_lock = threading.Lock()
+@tasks.loop(seconds=10)
+async def update_loop():
+    with status_lock:
+        if process is not None:
+            await client.change_presence(activity=discord.Game(name=ACTIVITY_NAME["running"]))
+        else:
+            await client.change_presence(activity=discord.Game(name=ACTIVITY_NAME["ended"]))
+
 @client.event
 async def on_ready():
     global process
     ready_logger.info('discord bot logging on')
+    update_loop.start()
     try:
         #サーバーの起動
         await client.change_presence(activity=discord.Game(ACTIVITY_NAME["starting"]))
@@ -1228,7 +1239,7 @@ async def exit(interaction: discord.Interaction):
     await interaction.response.send_message(RESPONSE_MSG["exit"]["success"])
     exit_logger.info('exit')
     await client.close()
-    exit(0)
+    sys.exit()
 
 #コマンドがエラーの場合
 @tree.error
@@ -1239,12 +1250,30 @@ async def on_error(interaction: discord.Interaction, error: Exception):
 #-------------------------------------------------------------------------------------------------------web
 from flask import Flask, render_template, jsonify, request
 from ansi2html import Ansi2HTMLConverter
-
+import waitress
 
 app = Flask(__name__,template_folder="mikanassets/web")
-create_logger("werkzeug",Formatter.FlaskFormatter(f'{Color.BOLD + Color.BG_BLACK}%(asctime)s %(levelname)s %(name)s: %(message)s', dt_fmt),Formatter.FlaskConsoleFormatter('%(asctime)s %(levelname)s %(name)s: %(message)s', dt_fmt))
+flask_logger = create_logger("werkzeug",Formatter.FlaskFormatter(f'{Color.BOLD + Color.BG_BLACK}%(asctime)s %(levelname)s %(name)s: %(message)s', dt_fmt),Formatter.FlaskConsoleFormatter('%(asctime)s %(levelname)s %(name)s: %(message)s', dt_fmt))
 
+class LogIPMiddleware:
+    def __init__(self, app):
+        self.app = app
 
+    def __call__(self, environ, start_response):
+        # クライアントのIPアドレスを取得
+        client_ip = environ.get('REMOTE_ADDR', '')
+        # リクエストされたURLを取得
+        request_method = environ.get('REQUEST_METHOD', '')
+        request_uri = environ.get('PATH_INFO', '')
+        query_string = environ.get('QUERY_STRING', '')
+
+        # ログに記録
+        flask_logger.info(f"Client IP: {client_ip}, Method: {request_method}, URL: {request_uri}, Query: {query_string}")
+        
+        return self.app(environ, start_response)
+
+# ミドルウェアをアプリに適用
+app.wsgi_app = LogIPMiddleware(app.wsgi_app)
 
 @app.route('/')
 def index():
@@ -1311,7 +1340,7 @@ def submit_data():
     return jsonify(f"result: {user_input}")
 
 def run_web():
-    app.run(host="0.0.0.0",port=8080)
+    waitress.serve(app, host='0.0.0.0', port=8000, _quiet=True)
 
     
 if use_flask_server:
