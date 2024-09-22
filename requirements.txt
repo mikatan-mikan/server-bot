@@ -2,3 +2,4 @@ discord.py
 requests
 Flask
 ansi2html
+waitress
