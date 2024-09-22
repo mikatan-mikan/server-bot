@@ -12,7 +12,7 @@ import threading
 import asyncio
 import platform
 import os
-from shutil import copystat,Error,copy2
+from shutil import copystat,Error,copy2,copytree
 import sys
 import logging
 import requests
@@ -1223,18 +1223,78 @@ async def on_error(interaction: discord.Interaction, error: Exception):
     await interaction.response.send_message(RESPONSE_MSG["error"]["error_base"] + str(error))
 
 #-------------------------------------------------------------------------------------------------------web
-from flask import Flask
+from flask import Flask, render_template, jsonify, request
+from ansi2html import Ansi2HTMLConverter
 
 
-
-app = Flask(__name__)
+app = Flask(__name__,template_folder="mikanassets/web")
 create_logger("werkzeug",Formatter.FlaskFormatter(f'{Color.BOLD + Color.BG_BLACK}%(asctime)s %(levelname)s %(name)s: %(message)s', dt_fmt),Formatter.FlaskConsoleFormatter('%(asctime)s %(levelname)s %(name)s: %(message)s', dt_fmt))
 
 
 
 @app.route('/')
 def index():
-    return "Hello, World!"
+    return render_template('index.html', logs = log_msg)
+
+@app.route('/get_console_data')
+def get_console_data():
+    converter = Ansi2HTMLConverter()
+    html_string = converter.convert("\n".join(log_msg))
+
+    try:
+        server_online = process.poll() is None#サーバーが起動している = True
+    except:
+        if process is not None:
+            process.kill()
+        server_online = False
+
+    bot_online = True
+
+    return jsonify({"html_string": html_string, "online_status": {"server": server_online, "bot": bot_online}})
+
+
+@app.route('/flask_start_server', methods=['POST'])
+def flask_start_server():
+    global process
+    if process is not None:
+        start_logger.info("server is already running")
+        return jsonify("server is already running")
+    process = subprocess.Popen([server_path + server_name],cwd=server_path,shell=True,stdin=subprocess.PIPE,stdout=subprocess.PIPE,encoding="utf-8")
+    start_logger.info("started server")
+    threading.Thread(target=server_logger,args=(process,deque())).start()
+    return jsonify("started server!!")
+
+@app.route('/flask_backup_server', methods=['POST'])
+def flask_backup_server():
+    world_name = request.form['fileName']
+    if "\\" in world_name or "/" in world_name:
+        return jsonify(RESPONSE_MSG["backup"]["invalid_filename"])
+    if process is None:
+        if os.path.exists(server_path + world_name):
+            backup_logger.info("backup server")
+            to = backup_path + "/" + datetime.now().strftime('%Y-%m-%d_%H_%M_%S')
+            copytree(server_path + world_name,to)
+            backup_logger.info("backuped server to " + to)
+            return jsonify("backuped server!! " + to)
+        else:
+            backup_logger.info('data not found : ' + server_path + world_name)
+            return jsonify(RESPONSE_MSG["backup"]["data_not_found"] + ":" + server_path + world_name)
+    else:
+        return jsonify("server is already running")
+
+@app.route('/submit_data', methods=['POST'])
+def submit_data():
+    user_input = request.form['userInput']
+    #サーバーが起きてるかを確認
+    if process is None:
+        return jsonify("server is not running")
+    #ifに引っかからない = サーバーが起動している
+    #サーバーの標準入力に入力
+    process.stdin.write(user_input + "\n")
+    process.stdin.flush()
+
+    # データを処理し、結果を返す（例: メッセージを返す）
+    return jsonify(f"result: {user_input}")
 
 def run_web():
     app.run(host="0.0.0.0",port=8080)
