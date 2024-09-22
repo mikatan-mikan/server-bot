@@ -20,7 +20,7 @@ import logging
 import requests
 import json
 
-use_flask_server = True
+use_flask_server = False
 
 #プロンプトを送る
 print()
