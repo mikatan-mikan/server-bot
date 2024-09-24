@@ -76,7 +76,7 @@ def make_config():
             os.makedirs(default_backup_path)
         default_backup_path = os.path.realpath(default_backup_path) + "/"
         print("default backup path: " + default_backup_path)
-        config_dict = {"allow":{"ip":True},"server_path":now_path + "/","allow_mccmd":["list","whitelist","tellraw","w","tell"],"server_name":"bedrock_server.exe","log":{"server":True,"all":False},"backup_path": default_backup_path,"mc":True,"lang":"en","force_admin":[],"web":{"secret_key":"YOURSECRETKEY","port":5000}}
+        config_dict = {"allow":{"ip":True},"server_path":now_path + "/","allow_mccmd":["list","whitelist","tellraw","w","tell"],"server_name":"bedrock_server.exe","log":{"server":True,"all":False},"backup_path": default_backup_path,"mc":True,"lang":"en","force_admin":[],"web":{"secret_key":"YOURSECRETKEY","port":80}}
         json.dump(config_dict,file,indent=4)
         config_changed = True
     else:
@@ -124,7 +124,7 @@ def make_config():
             if "force_admin" not in cfg:
                 cfg["force_admin"] = []
             if "web" not in cfg:
-                cfg["web"] = {"secret_key":"YOURSECRETKEY","port":5000}
+                cfg["web"] = {"secret_key":"YOURSECRETKEY","port":80}
             if "port" not in cfg["web"]:
                 cfg["web"]["port"] = 80
             if "secret_key" not in cfg["web"]:
