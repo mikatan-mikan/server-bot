@@ -1241,7 +1241,7 @@ async def logs(interaction: discord.Interaction,filename:str = None):
         return
     # discordにログを送信
     if filename is None:
-        await interaction.response.send_message("```ansi\n" + "\n".join(log_msg) + "\n```")
+        await interaction.response.send_message("```ansi\n" + "\n".join(log_msg[:10]) + "\n```")
     else:
         if "/" in filename or "\\" in filename or "%" in filename:
             log_logger.error('invalid filename : ' + filename + "\n" + f"interaction user / id：{interaction.user} {interaction.user.id}")
