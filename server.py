@@ -76,7 +76,7 @@ def make_config():
             os.makedirs(default_backup_path)
         default_backup_path = os.path.realpath(default_backup_path) + "/"
         print("default backup path: " + default_backup_path)
-        config_dict = {"allow":{"ip":True},"server_path":now_path + "/","allow_mccmd":["list","whitelist","tellraw","w","tell"],"server_name":"bedrock_server.exe","log":{"server":True,"all":False},"backup_path": default_backup_path,"mc":True,"lang":"en","force_admin":[],"web":{"secret_key":"YOURSECRETKEY","port":80}}
+        config_dict = {"allow":{"ip":True},"server_path":now_path + "/","allow_mccmd":["list","whitelist","tellraw","w","tell"],"server_name":"bedrock_server.exe","log":{"server":True,"all":False},"backup_path": default_backup_path,"mc":True,"lang":"en","force_admin":[],"web":{"secret_key":"YOURSECRETKEY","port":5000}}
         json.dump(config_dict,file,indent=4)
         config_changed = True
     else:
@@ -124,7 +124,7 @@ def make_config():
             if "force_admin" not in cfg:
                 cfg["force_admin"] = []
             if "web" not in cfg:
-                cfg["web"] = {"secret_key":"YOURSECRETKEY","port":80}
+                cfg["web"] = {"secret_key":"YOURSECRETKEY","port":5000}
             if "port" not in cfg["web"]:
                 cfg["web"]["port"] = 80
             if "secret_key" not in cfg["web"]:
@@ -496,6 +496,14 @@ if not os.path.exists(now_path + "/mikanassets/web/usr/tokens.json"):
     file.write(json.dumps(tokenfile_items,indent=4))
     file.close()
     del tokenfile_items
+if not os.path.exists(now_path + "/mikanassets/web/pictures"):
+    os.makedirs(now_path + "/mikanassets/web/pictures")
+if not os.path.exists(now_path + "/mikanassets/web/pictures/icon.png") or do_init:
+    url = 'https://www.dropbox.com/scl/fi/cr6uejk7s2vk4zevm8zc6/boticon.png?rlkey=szuisf29w1rnynz9xs9ucr24l&st=a8kuy1fd&dl=1'
+    filename= now_path + '/mikanassets/web/pictures/icon.png'
+    urlData = requests.get(url).content
+    with open(filename ,mode='wb') as f: # wb でバイト型を書き込める
+        f.write(urlData)
 
 def read_web_tokens():
     file = open(now_path + "/mikanassets/web/usr/tokens.json","r",encoding="utf-8")
@@ -793,7 +801,7 @@ async def get_text_dat():
         }
     def make_send_help():
         global send_help
-        send_help += f"web : http://{requests.get("https://api.ipify.org").text}:8080\n" 
+        send_help += f"web : http://{requests.get("https://api.ipify.org").text}:{web_port}\n" 
         send_help += "```"
         for key in HELP_MSG[lang]:
             send_help += key + " " + HELP_MSG[lang][key] + "\n"
@@ -1323,7 +1331,7 @@ from flask import Flask, render_template, jsonify, request, session, redirect, u
 from ansi2html import Ansi2HTMLConverter
 import waitress
 
-app = Flask(__name__,template_folder="mikanassets/web")
+app = Flask(__name__,template_folder="mikanassets/web",static_folder="mikanassets/web")
 app.secret_key = flask_secret_key
 flask_logger = create_logger("werkzeug",Formatter.FlaskFormatter(f'{Color.BOLD + Color.BG_BLACK}%(asctime)s %(levelname)s %(name)s: %(message)s', dt_fmt),Formatter.FlaskConsoleFormatter('%(asctime)s %(levelname)s %(name)s: %(message)s', dt_fmt))
 
@@ -1353,7 +1361,6 @@ def load_tokens():
     tokens = set()
     try:
         items = web_tokens
-        print(items)
         now = datetime.now()
         for token in items:
             if datetime.strptime(token["deadline"], "%Y-%m-%d %H:%M:%S") > now:
@@ -1366,8 +1373,18 @@ def load_tokens():
 # トークンを検証する
 def is_valid_token(token):
     tokens = load_tokens()
-    print("token : ",tokens, token)
     return token in tokens
+
+def is_valid_session(token):
+    if 'token' not in session:
+        # ログアウトにリダイレクトするためのフラグを返す
+        return False
+    if not is_valid_token(session['token']):
+        #ログアウト
+        # ログアウトにリダイレクトするためのフラグを返す
+        return False
+    return True
+
 
 # クッキーからトークンを取得し、セッションにセット
 @app.before_request
@@ -1382,6 +1399,11 @@ def index():
     if 'token' in session:
         if is_valid_token(session['token']):
             return render_template('index.html', logs = log_msg)
+
+    # ログアウトさせられた場合理由を表示
+    if 'logout_reason' in session:
+        flash(session['logout_reason'])
+        session.pop('logout_reason') 
 
     if request.method == 'POST':
         token = request.form['token']
@@ -1414,6 +1436,11 @@ def logout():
 
 @app.route('/get_console_data')
 def get_console_data():
+    if not is_valid_session(session['token']):
+        # ログアウト
+        session["logout_reason"] = "This token has expired. create new token."
+        return jsonify({"redirect": url_for('logout')})
+    
     converter = Ansi2HTMLConverter()
     html_string = converter.convert("\n".join(log_msg))
 
@@ -1431,6 +1458,10 @@ def get_console_data():
 
 @app.route('/flask_start_server', methods=['POST'])
 def flask_start_server():
+    if not is_valid_session(session['token']):
+        # ログアウト
+        session["logout_reason"] = "This token has expired. create new token."
+        return jsonify({"redirect": url_for('logout')})
     global process
     if process is not None:
         start_logger.info("server is already running")
@@ -1442,6 +1473,10 @@ def flask_start_server():
 
 @app.route('/flask_backup_server', methods=['POST'])
 def flask_backup_server():
+    if not is_valid_session(session['token']):
+        # ログアウト
+        session["logout_reason"] = "This token has expired. create new token."
+        return jsonify({"redirect": url_for('logout')})
     world_name = request.form['fileName']
     if "\\" in world_name or "/" in world_name:
         return jsonify(RESPONSE_MSG["backup"]["invalid_filename"])
@@ -1460,6 +1495,10 @@ def flask_backup_server():
 
 @app.route('/submit_data', methods=['POST'])
 def submit_data():
+    if not is_valid_session(session['token']):
+        # ログアウト
+        session["logout_reason"] = "This token has expired. create new token."
+        return jsonify({"redirect": url_for('logout')})
     user_input = request.form['userInput']
     #サーバーが起きてるかを確認
     if process is None:
