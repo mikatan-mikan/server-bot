@@ -1338,7 +1338,7 @@ flask_logger = create_logger("werkzeug",Formatter.FlaskFormatter(f'{Color.BOLD +
 class LogIPMiddleware:
     def __init__(self, app):
         self.app = app
-        self.before_log = {"Client IP": "", "Method": "", "URL": "", "Query": ""}
+        # self.before_log = {"Client IP": "", "Method": "", "URL": "", "Query": ""}
 
     def __call__(self, environ, start_response):
         # クライアントのIPアドレスを取得
@@ -1349,9 +1349,8 @@ class LogIPMiddleware:
         query_string = environ.get('QUERY_STRING', '')
 
         # ログに記録
-        if self.before_log["URL"] != "/get_console_data":
+        if request_uri != "/get_console_data":
             flask_logger.info(f"Client IP: {client_ip}, Method: {request_method}, URL: {request_uri}, Query: {query_string}")
-        self.before_log = {"Client IP": client_ip, "Method": request_method, "URL": request_uri, "Query": query_string}
 
         return self.app(environ, start_response)
 
