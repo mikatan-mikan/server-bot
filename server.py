@@ -444,6 +444,7 @@ try:
     bot_admin = set(config["force_admin"])
     flask_secret_key = config["web"]["secret_key"]
     web_port = config["web"]["port"]
+    STOP = "stop"
 except KeyError:
     sys_logger.error("config file is broken. please delete .config and try again.")
     wait_for_keypress()
@@ -578,6 +579,9 @@ def properties_to_dict(filename):
 if config["mc"]:
     properties = properties_to_dict(server_path + "server.properties")
     sys_logger.info("read properties file -> " + server_path + "server.properties")
+
+#コマンド利用ログ
+use_stop = False
 
 # 権限データ
 COMMAND_PERMISSION = {
@@ -924,7 +928,7 @@ async def dircp_discord(src, dst, interaction: discord.Interaction, symlinks=Fal
 
 #logger thread
 def server_logger(proc:subprocess.Popen,ret):
-    global process,is_back_discord 
+    global process,is_back_discord , use_stop
     if log["server"]:
         file = open(file = server_path + "logs/server " + datetime.now().strftime("%Y-%m-%d_%H_%M_%S") + ".log",mode = "w")
     while True:
@@ -952,6 +956,10 @@ def server_logger(proc:subprocess.Popen,ret):
             is_back_discord = False
     #サーバーが終了したことをログに残す
     sys_logger.info('server is ended')
+    #もし、stop命令が見当たらないなら、エラー出力をしておく
+    if not use_stop:
+        sys_logger.error('stop command is not found')
+        use_stop = True
     #プロセスを終了させる
     process = None
 
@@ -1012,6 +1020,7 @@ async def start(interaction: discord.Interaction):
 #/stop
 @tree.command(name="stop",description=COMMAND_DESCRIPTION[lang]["stop"])
 async def stop(interaction: discord.Interaction):
+    global use_stop
     await print_user(stop_logger,interaction.user)
     global process
     #管理者権限を要求
@@ -1021,9 +1030,10 @@ async def stop(interaction: discord.Interaction):
         return
     #サーバー起動確認
     if await is_stopped_server(interaction,stop_logger): return
+    use_stop = True
     stop_logger.info('server stopping')
     await interaction.response.send_message(RESPONSE_MSG["stop"]["success"])
-    process.stdin.write("stop\n")
+    process.stdin.write(STOP + "\n")
     process.stdin.flush()
     await client.change_presence(activity=discord.Game(ACTIVITY_NAME["ending"])) 
     while True:
@@ -1499,6 +1509,7 @@ def flask_backup_server():
 
 @app.route('/submit_data', methods=['POST'])
 def submit_data():
+    global use_stop
     if not is_valid_session(session['token']):
         # ログアウト
         session["logout_reason"] = "This token has expired. create new token."
@@ -1508,6 +1519,10 @@ def submit_data():
     if process is None:
         return jsonify("server is not running")
     #ifに引っかからない = サーバーが起動している
+
+    #もし入力されたコマンドがstopだったら
+    use_stop = True
+
     #サーバーの標準入力に入力
     process.stdin.write(user_input + "\n")
     process.stdin.flush()
