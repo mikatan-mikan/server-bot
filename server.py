@@ -950,6 +950,8 @@ def server_logger(proc:subprocess.Popen,ret):
         if is_back_discord:
             cmd_logs.append(logs)
             is_back_discord = False
+    #サーバーが終了したことをログに残す
+    sys_logger.info('server is ended')
     #プロセスを終了させる
     process = None
 
