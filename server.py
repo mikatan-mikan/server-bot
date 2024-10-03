@@ -76,7 +76,7 @@ def make_config():
             os.makedirs(default_backup_path)
         default_backup_path = os.path.realpath(default_backup_path) + "/"
         print("default backup path: " + default_backup_path)
-        config_dict = {"allow":{"ip":True},"server_path":now_path + "/","allow_mccmd":["list","whitelist","tellraw","w","tell"],"server_name":"bedrock_server.exe","log":{"server":True,"all":False},"backup_path": default_backup_path,"mc":True,"lang":"en","force_admin":[],"web":{"secret_key":"YOURSECRETKEY","port":80}}
+        config_dict = {"allow":{"ip":True},"server_path":now_path + "/","allow_mccmd":["list","whitelist","tellraw","w","tell"],"server_name":"bedrock_server.exe","log":{"server":True,"all":False},"stop":{"submit":"stop"},"backup_path": default_backup_path,"mc":True,"lang":"en","force_admin":[],"web":{"secret_key":"YOURSECRETKEY","port":80}}
         json.dump(config_dict,file,indent=4)
         config_changed = True
     else:
@@ -104,6 +104,11 @@ def make_config():
                     cfg["log"]["server"] = True
                 if "all" not in cfg["log"]:
                     cfg["log"]["all"] = False
+            if "stop" not in cfg:
+                cfg["stop"] = {"submit":"stop"}
+            else:
+                if "submit" not in cfg["stop"]:
+                    cfg["stop"]["submit"] = "stop"
             if "backup_path" not in cfg:
                 try:
                     server_name = cfg["server_path"].split("/")[-2]
@@ -444,7 +449,7 @@ try:
     bot_admin = set(config["force_admin"])
     flask_secret_key = config["web"]["secret_key"]
     web_port = config["web"]["port"]
-    STOP = "stop"
+    STOP = config["stop"]["submit"]
 except KeyError:
     sys_logger.error("config file is broken. please delete .config and try again.")
     wait_for_keypress()
