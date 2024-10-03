@@ -1521,7 +1521,8 @@ def submit_data():
     #ifに引っかからない = サーバーが起動している
 
     #もし入力されたコマンドがstopだったら
-    use_stop = True
+    if user_input == STOP:
+        use_stop = True
 
     #サーバーの標準入力に入力
     process.stdin.write(user_input + "\n")
