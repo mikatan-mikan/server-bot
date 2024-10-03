@@ -974,7 +974,9 @@ async def print_user(logger: logging.Logger,user: discord.user):
 #ローカルファイルの読み込み結果出力
 sys_logger.info("read token file -> " + now_path + "/" +".token")
 sys_logger.info("read config file -> " + now_path + "/" +".config")
-sys_logger.info("config -> " + str(config))
+view_config = config.copy()
+view_config["web"]["secret_key"] = "****"
+sys_logger.info("config -> " + str(view_config))
 if config_changed: sys_logger.info("added config because necessary elements were missing")
 
 class ServerBootException(Exception):pass
