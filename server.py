@@ -1239,6 +1239,7 @@ async def get_log_files_choice_format(interaction: discord.Interaction, current:
         app_commands.Choice(name = i,value = i) for i in logfiles
     ]
 
+
 #/log <filename>
 # filename : ログファイル名
 # filename == None -> 最新のログ10件
