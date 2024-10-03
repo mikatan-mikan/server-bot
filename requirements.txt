@@ -1,5 +1,5 @@
-discord.py
-requests
-Flask
-ansi2html
-waitress
+discord.py == 2.3.2
+requests == 2.32.2
+Flask == 3.0.3
+ansi2html == 1.9.2
+waitress == 3.0.0
