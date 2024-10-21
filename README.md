@@ -102,7 +102,10 @@ tokenを記述し、configのserver_pathにserver.[exe/bat(jarを実行するフ
         "secret_key": "YOURSECRETKEY",
         "port": 80
     },
-    "discord_terminal": false
+    "terminal": {
+        "discord":false,
+        "capacity": "inf"
+    }
 }
 ```
 
@@ -119,7 +122,8 @@ tokenを記述し、configのserver_pathにserver.[exe/bat(jarを実行するフ
 |force_admin|サーバー内の管理者権限を操作します。通常configを直接操作しません。admin forceコマンドを用いてbot管理者を設定できます。||
 |web.secret_key|Flaskで利用する鍵を設定します。(app.secret_key)十分に強固な文字列を設定してください。|
 |web.port|webサーバーのポート番号を入力します。|
-|discord_terminal|コンソールとして扱うチャンネルidを指定します。通常configを直接操作しません。指定したチャンネルではサーバー起動中の入出力が可能になります(但し、allow_mccmdで許可されている命令のみ)。|
+|terminal.discord|コンソールとして扱うチャンネルidを指定します。通常configを直接操作しません。指定したチャンネルではサーバー起動中の入出力が可能になります(但し、allow_mccmdで許可されている命令のみ)。|
+|terminal.capacity|discordにコンソール出力する予定の文字列長の最大を設定します。デフォルトでは送信に時間がかかったとしてもデータを捨てません。|
 
 server.pyはサーバ本体と同じ改装に配置することを推奨します。
 

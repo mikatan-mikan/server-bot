@@ -77,7 +77,7 @@ def make_config():
             os.makedirs(default_backup_path)
         default_backup_path = os.path.realpath(default_backup_path) + "/"
         print("default backup path: " + default_backup_path)
-        config_dict = {"allow":{"ip":True},"server_path":now_path + "/","allow_mccmd":["list","whitelist","tellraw","w","tell"],"server_name":"bedrock_server.exe","log":{"server":True,"all":False},"stop":{"submit":"stop"},"backup_path": default_backup_path,"mc":True,"lang":"en","force_admin":[],"web":{"secret_key":"YOURSECRETKEY","port":80},"discord_terminal":False}
+        config_dict = {"allow":{"ip":True},"server_path":now_path + "/","allow_mccmd":["list","whitelist","tellraw","w","tell"],"server_name":"bedrock_server.exe","log":{"server":True,"all":False},"stop":{"submit":"stop"},"backup_path": default_backup_path,"mc":True,"lang":"en","force_admin":[],"web":{"secret_key":"YOURSECRETKEY","port":80},"terminal":{"discord":False,"capacity":"inf"}}
         json.dump(config_dict,file,indent=4)
         config_changed = True
     else:
@@ -135,8 +135,13 @@ def make_config():
                 cfg["web"]["port"] = 80
             if "secret_key" not in cfg["web"]:
                 cfg["web"]["secret_key"] = "YOURSECRETKEY"
-            if "discord_terminal" not in cfg:
-                cfg["discord_terminal"] = False
+            if "terminal" not in cfg:
+                cfg["terminal"] = {"discord":False,"capacity":"inf"}
+            else:
+                if "discord" not in cfg["terminal"]:
+                    cfg["terminal"]["discord"] = False
+                if "capacity" not in cfg["terminal"]:
+                    cfg["terminal"]["capacity"] = "inf"
             return cfg
         if config_dict != check(config_dict.copy()):
             check(config_dict)
@@ -467,7 +472,11 @@ try:
     flask_secret_key = config["web"]["secret_key"]
     web_port = config["web"]["port"]
     STOP = config["stop"]["submit"]
-    where_terminal = config["discord_terminal"]
+    where_terminal = config["terminal"]["discord"]
+    if config["terminal"]["capacity"] == "inf":
+        terminal_capacity = float("inf")
+    else:
+        terminal_capacity = config["terminal"]["capacity"]
 except KeyError:
     sys_logger.error("config file is broken. please delete .config and try again.")
     wait_for_keypress()
@@ -1031,8 +1040,16 @@ async def update_loop():
             # 送信が無効の場合
             if where_terminal == False:
                 discord_log_msg.clear()
+                discord_loop_is_run = False
                 return
+            pop_flg = False
             while len(discord_log_msg) > 0:
+                while len(discord_log_msg) > terminal_capacity:
+                    discord_log_msg.popleft()
+                    pop_flg = True
+                if pop_flg:
+                    await client.get_channel(where_terminal).send(f"データ件数が{terminal_capacity}件を超えたため以前のデータを破棄しました。より多くのログを出力するには.config内のterminal.capacityを変更してください。")
+                    pop_flg = False
                 discord_terminal_send_length += len(discord_log_msg[0]) + 1
                 if discord_terminal_send_length >= 1900:
                     # 送信処理(where_terminal chに送信)
@@ -1420,7 +1437,7 @@ async def terminal(interaction: discord.Interaction):
         return
     #発言したチャンネルをwhere_terminalに登録
     where_terminal = interaction.channel_id
-    config["discord_terminal"] = where_terminal
+    config["terminal"]["discord"] = where_terminal
     terminal_logger.info(f"terminal setting -> {where_terminal}")
     #configを書き換え
     with open(now_path + "/.config","w") as f:
