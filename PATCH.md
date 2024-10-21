@@ -1,3 +1,13 @@
+### 2024/10/21 コマンドの追加
+
+・botの制約の追加
+
+[discord developers](https://discord.com/developers/applications)の該当のbotに対してSettings>Bot>Privileged Gateway Intents>Message Content Intentを許可してください
+
+・コマンドの追加
+
+ - terminal　　　　discord上のチャンネルをコンソール入出力として扱えます。
+
 ### 2024/08/14 コマンドの追加
 
 ・コマンドの追加
