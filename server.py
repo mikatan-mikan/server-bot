@@ -1013,7 +1013,9 @@ class ServerBootException(Exception):pass
 status_lock = threading.Lock()
 discord_terminal_item = deque()
 discord_terminal_send_length = 0
-discord_loop_is_run = False@tasks.loop(seconds=10)
+discord_loop_is_run = False
+
+@tasks.loop(seconds=10)
 async def update_loop():
     global discord_terminal_item, discord_terminal_send_length, discord_loop_is_run
     # discord_loop_is_runを確認(2回以上実行された場合は処理をしない)
