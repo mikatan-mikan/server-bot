@@ -42,14 +42,6 @@ discordを用いて特定のサーバーを管理できます。
 
 これらコマンドの設定等は後述の使用方法を参照してください。
 
-## web上での操作
-
-ホストipアドレス:<configで設定したport>を用いて操作することができます。
-
-アクセス時にtokenを要求されるため、discordで`/token`を実行しtokenを入手してください。
-
-現在のところwaitressを利用し実装されています。そのためhttpsを用いて実行する場合(推奨)リバースプロキシを利用してください。
-
 ## 動作確認
 
 |確認バージョン|日時|確認時のOS|
@@ -76,6 +68,9 @@ ubuntu(wsl2) / python3.8.10 (古いバージョンのPythonを利用する場合
 ## 必要なもの
 
 現在使用していないdiscord bot
+
+> [!WARNING]
+> [discord developers](https://discord.com/developers/applications)にて該当のbotからSettings>Bot>Privileged Gateway Intents>Message Content Intentを許可してください。
 
 ライブラリ：requirements.txtを参照
 
@@ -124,7 +119,13 @@ tokenを記述し、configのserver_pathにserver.[exe/bat(jarを実行するフ
     },
     "backup_path": str(path of backup),
     "mc": true,
-    "lang": "en"
+    "lang": "en",
+    "force_admin": [],
+    "web": {
+        "secret_key": "YOURSECRETKEY",
+        "port": 80
+    },
+    "discord_terminal": false
 }
 ```
 
@@ -138,8 +139,10 @@ tokenを記述し、configのserver_pathにserver.[exe/bat(jarを実行するフ
 |backup_path|ワールドデータのバックアップパス(例えば`D:\\server\\backup`に保存したければ`D:\\server\\backup\\`または`D:/server/backup/`)|
 |mc|サーバーがmcサーバーかどうかを記述します。現在trueに設定されている場合、/ip時にserver.propertiesからserver-portを読み出します|
 |lang|discordに送信するメッセージの言語を選択します。(en : 英語, ja : 日本語)|
+|force_admin|サーバー内の管理者権限を操作します。通常configを直接操作しません。admin forceコマンドを用いてbot管理者を設定できます。||
 |web.secret_key|Flaskで利用する鍵を設定します。(app.secret_key)十分に強固な文字列を設定してください。|
 |web.port|webサーバーのポート番号を入力します。|
+|discord_terminal|コンソールとして扱うチャンネルidを指定します。通常configを直接操作しません。指定したチャンネルではサーバー起動中の入出力が可能になります(但し、allow_mccmdで許可されている命令のみ)。|
 
 server.pyはサーバ本体と同じ改装に配置することを推奨します。
 
@@ -158,6 +161,15 @@ server.pyはサーバ本体と同じ改装に配置することを推奨しま�
 ・生成されるupdate.pyの名前は変更しないでください。`/replace`が動作しなくなるはずです。
 
 ・.configに存在するweb.secret_keyには予測不可能で十分に長い文字列を設定してください。
+
+
+## web上での操作
+
+ホストipアドレス:<configで設定したport>を用いて操作することができます。
+
+アクセス時にtokenを要求されるため、discordで`/token`を実行しtokenを入手してください。
+
+現在のところwaitressを利用し実装されています。そのためhttpsを用いて実行する場合(推奨)リバースプロキシを利用してください。
 
 ### /cmd
 
