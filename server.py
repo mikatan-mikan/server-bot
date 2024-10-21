@@ -3,6 +3,7 @@ from discord import app_commands
 from discord.ext import tasks
 import waitress.server
 intents = discord.Intents.default() 
+intents.message_content = True
 client = discord.Client(intents=intents) 
 tree = app_commands.CommandTree(client)
 
@@ -76,7 +77,7 @@ def make_config():
             os.makedirs(default_backup_path)
         default_backup_path = os.path.realpath(default_backup_path) + "/"
         print("default backup path: " + default_backup_path)
-        config_dict = {"allow":{"ip":True},"server_path":now_path + "/","allow_mccmd":["list","whitelist","tellraw","w","tell"],"server_name":"bedrock_server.exe","log":{"server":True,"all":False},"stop":{"submit":"stop"},"backup_path": default_backup_path,"mc":True,"lang":"en","force_admin":[],"web":{"secret_key":"YOURSECRETKEY","port":80}}
+        config_dict = {"allow":{"ip":True},"server_path":now_path + "/","allow_mccmd":["list","whitelist","tellraw","w","tell"],"server_name":"bedrock_server.exe","log":{"server":True,"all":False},"stop":{"submit":"stop"},"backup_path": default_backup_path,"mc":True,"lang":"en","force_admin":[],"web":{"secret_key":"YOURSECRETKEY","port":80},"discord_terminal":False}
         json.dump(config_dict,file,indent=4)
         config_changed = True
     else:
@@ -134,6 +135,8 @@ def make_config():
                 cfg["web"]["port"] = 80
             if "secret_key" not in cfg["web"]:
                 cfg["web"]["secret_key"] = "YOURSECRETKEY"
+            if "discord_terminal" not in cfg:
+                cfg["discord_terminal"] = False
             return cfg
         if config_dict != check(config_dict.copy()):
             check(config_dict)
@@ -384,12 +387,21 @@ console_formatter = Formatter.ColoredFormatter(f'{Color.BOLD + Color.BG_BLACK}%(
 file_formatter = Formatter.DefaultConsoleFormatter('%(asctime)s %(levelname)s %(name)s: %(message)s', dt_fmt)
 #/log用のログ保管場所
 log_msg = deque(maxlen=19)
+#discord送信用のログ
+discord_log_msg = deque() 
 def create_logger(name,console_formatter=console_formatter,file_formatter=file_formatter):
     class DequeHandler(logging.Handler):
         def __init__(self, deque):
             super().__init__()
             self.deque = deque
 
+        def emit(self, record):
+            log_entry = self.format(record)
+            self.deque.append(log_entry)
+    class DiscordHandler(logging.Handler):
+        def __init__(self,deque):
+            super().__init__()
+            self.deque = deque
         def emit(self, record):
             log_entry = self.format(record)
             self.deque.append(log_entry)
@@ -408,7 +420,11 @@ def create_logger(name,console_formatter=console_formatter,file_formatter=file_f
     deque_handler = DequeHandler(log_msg)
     deque_handler.setLevel(logging.DEBUG)
     deque_handler.setFormatter(console_formatter)  # フォーマットは任意で設定
+    discord_handler = DiscordHandler(discord_log_msg)
+    discord_handler.setLevel(logging.DEBUG)
+    discord_handler.setFormatter(console_formatter)  # フォーマットは任意で設定
     logger.addHandler(deque_handler)
+    logger.addHandler(discord_handler)
     return logger
 
 #ロガーの作成
@@ -429,6 +445,7 @@ permission_logger = create_logger("permission")
 admin_logger = create_logger("admin")
 lang_logger = create_logger("lang")
 token_logger = create_logger("token")
+terminal_logger = create_logger("terminal")
 minecraft_logger = create_logger("minecraft",Formatter.MinecraftFormatter(f'{Color.BOLD + Color.BG_BLACK}%(asctime)s %(levelname)s %(name)s: %(message)s', dt_fmt),Formatter.MinecraftConsoleFormatter('%(asctime)s %(levelname)s %(name)s: %(message)s', dt_fmt))
 
 #--------------------------------------------------------------------------------------------
@@ -450,6 +467,7 @@ try:
     flask_secret_key = config["web"]["secret_key"]
     web_port = config["web"]["port"]
     STOP = config["stop"]["submit"]
+    where_terminal = config["discord_terminal"]
 except KeyError:
     sys_logger.error("config file is broken. please delete .config and try again.")
     wait_for_keypress()
@@ -603,6 +621,7 @@ COMMAND_PERMISSION = {
     "/permission ":0,
     "/lang       ":2,
     "/tokengen   ":1,
+    "/terminal   ":1,
 }
 
 async def get_text_dat():
@@ -624,6 +643,7 @@ async def get_text_dat():
             "/permission ":"/permission <user> で、userのbot操作権利を表示します。",
             "/lang       ":"/lang <lang> で、botの言語を変更します。",
             "/tokengen   ":"/tokengen で、webでログインするためのトークンを生成します。",
+            "/terminal   ":"/terminal で、サーバーのコンソールを実行したチャンネルに紐づけます。",
         },
         "en":{
             "/stop       ":"Stop the server. If the server is not running, an error message will be returned.",
@@ -638,6 +658,7 @@ async def get_text_dat():
             "/permission ":"/permission <user> displays the user's bot operation rights.",
             "/lang       ":"/lang <lang> changes the bot's language.",
             "/tokengen   ":"/tokengen generates a token for login to the web.",
+            "/terminal   ":"/terminal connects the server's console to a channel.",
         },
     }
         
@@ -659,6 +680,7 @@ async def get_text_dat():
             "permission":"選択したユーザに対してbot操作権限を表示します。",
             "lang":"botの言語を変更します。引数には言語コードを指定します。",
             "tokengen":"webにログインするためのトークンを生成します。",
+            "terminal":"サーバーのコンソールを実行したチャンネルに紐づけます。",
         },
         "en":{
             "stop":"Stop the server.",
@@ -676,6 +698,7 @@ async def get_text_dat():
             "permission":"Display the bot operation rights of the selected user.",
             "lang":"Change the bot's language. With an argument, specify the language code.",
             "tokengen":"Generate a token for login to the web.",
+            "terminal":"Connect the server's console to a channel.",
         },
     }
 
@@ -736,6 +759,9 @@ async def get_text_dat():
             },
             "tokengen":{
                 "success":"生成したトークン(30日間有効) : {}",
+            },
+            "terminal":{
+                "success":"サーバーのコンソールを{}に紐づけました",
             },
         }
         ACTIVITY_NAME = {
@@ -801,6 +827,9 @@ async def get_text_dat():
             "tokengen":{
                 "success":"Generated token (valid for 30 days) : {}",
             },
+            "terminal":{
+                "success":"The terminal has been set to {}",
+            },
         }
         ACTIVITY_NAME = {
             "starting":"Server go!",
@@ -810,7 +839,7 @@ async def get_text_dat():
         }
     def make_send_help():
         global send_help
-        send_help += f"web : http://{requests.get("https://api.ipify.org").text}:{web_port}\n" 
+        send_help += f"web : http://{requests.get('https://api.ipify.org').text}:{web_port}\n" 
         send_help += "```"
         for key in HELP_MSG[lang]:
             send_help += key + " " + HELP_MSG[lang][key] + "\n"
@@ -982,13 +1011,72 @@ if config_changed: sys_logger.info("added config because necessary elements were
 class ServerBootException(Exception):pass
 
 status_lock = threading.Lock()
+discord_terminal_item = deque()
+discord_terminal_send_length = 0
+discord_loop_is_run = False
 @tasks.loop(seconds=10)
 async def update_loop():
+    global discord_terminal_item, discord_terminal_send_length, discord_loop_is_run
+    # discord_loop_is_runを確認(2回以上実行された場合は処理をしない)
+    if discord_loop_is_run: return
+    discord_loop_is_run = True
     with status_lock:
         if process is not None:
             await client.change_presence(activity=discord.Game(name=ACTIVITY_NAME["running"]))
         else:
             await client.change_presence(activity=discord.Game(name=ACTIVITY_NAME["ended"]))
+        # discord_log_msgにデータがあれば送信
+        # 送信が無効の場合
+        if where_terminal == False:
+            discord_log_msg.clear()
+            return
+        while len(discord_log_msg) > 0:
+            discord_terminal_send_length += len(discord_log_msg[0]) + 1
+            if discord_terminal_send_length >= 1900:
+                # 送信処理(where_terminal chに送信)
+                await client.get_channel(where_terminal).send("```ansi\n" + ''.join(discord_terminal_item) + "\n```")
+                # discord_terminal_itemをリセット
+                discord_terminal_item = deque()
+                discord_terminal_send_length = discord_log_msg[0] + 1
+                # 連投を避けるためにsleep
+                await asyncio.sleep(0.25)
+            discord_terminal_item.append(discord_log_msg.popleft() + "\n")
+        # 残っていれば送信
+        if len(discord_terminal_item) > 0:
+            await client.get_channel(where_terminal).send("```ansi\n" + ''.join(discord_terminal_item) + "\n```")
+            discord_terminal_item = deque()
+            discord_terminal_send_length = 0
+    discord_loop_is_run = False
+
+# メッセージが送信されたときの処理
+@client.event
+async def on_message(message: discord.Message):
+    try:
+        # ボット自身のメッセージは無視する
+        if message.author == client.user:
+            return
+        # terminal ch以外のメッセージは無視
+        if message.channel.id != where_terminal:
+            return
+        # 管理者以外をはじく
+        if not await is_administrator(message.author) and not await is_force_administrator(message.author):
+            await message.reply("permission denied")
+            return
+        # サーバーが閉じていたらはじく
+        if process is None or process.poll() is not None:
+            await message.reply("server is not running")
+            return
+        # コマンドを処理
+        cmd_list = message.content.split(" ")
+        # 許可されないコマンドをはじく
+        if cmd_list[0] not in allow_cmd:
+            sys_logger.error('unknown command : ' + " ".join(cmd_list))
+            await message.reply("this command is not allowed")
+            return
+        process.stdin.write(message.content + "\n")
+        process.stdin.flush()
+    except Exception as e:
+        sys_logger.error(e)
 
 @client.event
 async def on_ready():
@@ -1315,6 +1403,25 @@ async def tokengen(interaction: discord.Interaction):
     with open(now_path + "/mikanassets/web/usr/tokens.json","w",encoding="utf-8") as f:
         json.dump(item,f,indent=4,ensure_ascii=False)
     token_logger.info('token added : ' + str(dat_token))
+
+#/terminal
+@tree.command(name="terminal",description=COMMAND_DESCRIPTION[lang]["terminal"])
+async def terminal(interaction: discord.Interaction):
+    global where_terminal
+    await print_user(terminal_logger,interaction.user)
+    #管理者権限を要求
+    if not await is_administrator(interaction.user) and not await is_force_administrator(interaction.user): 
+        await not_enough_permission(interaction,terminal_logger)
+        return
+    #発言したチャンネルをwhere_terminalに登録
+    where_terminal = interaction.channel_id
+    config["discord_terminal"] = where_terminal
+    terminal_logger.info(f"terminal setting -> {where_terminal}")
+    #configを書き換え
+    with open(now_path + "/.config","w") as f:
+        json.dump(config,f,indent=4,ensure_ascii=False)
+    await interaction.response.send_message(RESPONSE_MSG["terminal"]["success"].format(where_terminal))
+
 
 #/help
 @tree.command(name="help",description=COMMAND_DESCRIPTION[lang]["help"])
