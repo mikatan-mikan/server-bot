@@ -1014,39 +1014,44 @@ status_lock = threading.Lock()
 discord_terminal_item = deque()
 discord_terminal_send_length = 0
 discord_loop_is_run = False
+
 @tasks.loop(seconds=10)
 async def update_loop():
     global discord_terminal_item, discord_terminal_send_length, discord_loop_is_run
     # discord_loop_is_runを確認(2回以上実行された場合は処理をしない)
     if discord_loop_is_run: return
-    discord_loop_is_run = True
-    with status_lock:
-        if process is not None:
-            await client.change_presence(activity=discord.Game(name=ACTIVITY_NAME["running"]))
-        else:
-            await client.change_presence(activity=discord.Game(name=ACTIVITY_NAME["ended"]))
-        # discord_log_msgにデータがあれば送信
-        # 送信が無効の場合
-        if where_terminal == False:
-            discord_log_msg.clear()
-            return
-        while len(discord_log_msg) > 0:
-            discord_terminal_send_length += len(discord_log_msg[0]) + 1
-            if discord_terminal_send_length >= 1900:
-                # 送信処理(where_terminal chに送信)
+    try:
+        discord_loop_is_run = True
+        with status_lock:
+            if process is not None:
+                await client.change_presence(activity=discord.Game(name=ACTIVITY_NAME["running"]))
+            else:
+                await client.change_presence(activity=discord.Game(name=ACTIVITY_NAME["ended"]))
+            # discord_log_msgにデータがあれば送信
+            # 送信が無効の場合
+            if where_terminal == False:
+                discord_log_msg.clear()
+                return
+            while len(discord_log_msg) > 0:
+                discord_terminal_send_length += len(discord_log_msg[0]) + 1
+                if discord_terminal_send_length >= 1900:
+                    # 送信処理(where_terminal chに送信)
+                    await client.get_channel(where_terminal).send("```ansi\n" + ''.join(discord_terminal_item) + "\n```")
+                    # discord_terminal_itemをリセット
+                    discord_terminal_item = deque()
+                    discord_terminal_send_length = len(discord_log_msg[0]) + 1
+                    # 連投を避けるためにsleep
+                    await asyncio.sleep(1)
+                discord_terminal_item.append(discord_log_msg.popleft() + "\n")
+            # 残っていれば送信
+            if len(discord_terminal_item) > 0:
                 await client.get_channel(where_terminal).send("```ansi\n" + ''.join(discord_terminal_item) + "\n```")
-                # discord_terminal_itemをリセット
                 discord_terminal_item = deque()
-                discord_terminal_send_length = discord_log_msg[0] + 1
-                # 連投を避けるためにsleep
-                await asyncio.sleep(0.25)
-            discord_terminal_item.append(discord_log_msg.popleft() + "\n")
-        # 残っていれば送信
-        if len(discord_terminal_item) > 0:
-            await client.get_channel(where_terminal).send("```ansi\n" + ''.join(discord_terminal_item) + "\n```")
-            discord_terminal_item = deque()
-            discord_terminal_send_length = 0
-    discord_loop_is_run = False
+                discord_terminal_send_length = 0
+        discord_loop_is_run = False
+    except Exception as e:
+        sys_logger.error(e)
+        discord_loop_is_run = False
 
 # メッセージが送信されたときの処理
 @client.event
