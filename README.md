@@ -20,7 +20,7 @@ discordを用いて特定のサーバーを管理できます。
 
 ここでの管理とは起動/停止/ログ取得/入出力などを行うことを指します。
 
-## コマンド一覧
+## コマンド一覧(できること)
 
 プログラムに含まれるbotコマンドは以下の通りです。
 
@@ -42,40 +42,12 @@ discordを用いて特定のサーバーを管理できます。
 
 これらコマンドの設定等は後述の使用方法を参照してください。
 
-## web上での操作
-
-ホストipアドレス:<configで設定したport>を用いて操作することができます。
-
-アクセス時にtokenを要求されるため、discordで`/token`を実行しtokenを入手してください。
-
-現在のところwaitressを利用し実装されています。そのためhttpsを用いて実行する場合(推奨)リバースプロキシを利用してください。
-
-## 動作確認
-
-|確認バージョン|日時|確認時のOS|
-|----|----|----|
-|Java vanilla 1.9.4|2024/06/26|Windows 11|
-|Java vanilla 1.19|2024/06/26|Windows 11|
-|Java vanilla 1.19.4|2024/07/31|Windows 11|
-|Java fabric 1.20.1|2024/06/26|Windows 11|
-|Bedrock dedicated server 1.21|2024/07/30|Windows 11 & Ubuntu(wsl2)|
-
-java版serverをWindowsで起動する際一般に利用されるような以下の内容のbatをconfigのserver_nameに設定しています。noguiオプションが無い場合現在/stop等が利用できません。(fabric : start.bat , forge : run.bat)
-
-> [!WARNING]
-> -Dfile.encoding=UTF-8が存在しない場合一部環境で特殊文字等が正常に表示されません。またpauseのようなコマンドを記載しないでください。(このプログラムはサーバーを制御するプログラムです。それ以外のコマンドを実行しないでください。)
-
-`java -Xmx4048M -Xms1024M -Dfile.encoding=UTF-8 -jar server.jar nogui`
-
-### 確認済み環境
-
-windows 11 version 23H2  / python3.12.2&3.10.2
-
-ubuntu(wsl2) / python3.8.10 (古いバージョンのPythonを利用する場合は、configの初期設定が相対パスになります。絶対パスに直してから実行してください)
-
 ## 必要なもの
 
 現在使用していないdiscord bot
+
+> [!WARNING]
+> [discord developers](https://discord.com/developers/applications)にて該当のbotからSettings>Bot>Privileged Gateway Intents>Message Content Intentを許可してください。
 
 ライブラリ：requirements.txtを参照
 
@@ -124,7 +96,13 @@ tokenを記述し、configのserver_pathにserver.[exe/bat(jarを実行するフ
     },
     "backup_path": str(path of backup),
     "mc": true,
-    "lang": "en"
+    "lang": "en",
+    "force_admin": [],
+    "web": {
+        "secret_key": "YOURSECRETKEY",
+        "port": 80
+    },
+    "discord_terminal": false
 }
 ```
 
@@ -138,10 +116,51 @@ tokenを記述し、configのserver_pathにserver.[exe/bat(jarを実行するフ
 |backup_path|ワールドデータのバックアップパス(例えば`D:\\server\\backup`に保存したければ`D:\\server\\backup\\`または`D:/server/backup/`)|
 |mc|サーバーがmcサーバーかどうかを記述します。現在trueに設定されている場合、/ip時にserver.propertiesからserver-portを読み出します|
 |lang|discordに送信するメッセージの言語を選択します。(en : 英語, ja : 日本語)|
+|force_admin|サーバー内の管理者権限を操作します。通常configを直接操作しません。admin forceコマンドを用いてbot管理者を設定できます。||
 |web.secret_key|Flaskで利用する鍵を設定します。(app.secret_key)十分に強固な文字列を設定してください。|
 |web.port|webサーバーのポート番号を入力します。|
+|discord_terminal|コンソールとして扱うチャンネルidを指定します。通常configを直接操作しません。指定したチャンネルではサーバー起動中の入出力が可能になります(但し、allow_mccmdで許可されている命令のみ)。|
 
 server.pyはサーバ本体と同じ改装に配置することを推奨します。
+
+
+## 注意
+
+・生成されるupdate.pyの名前は変更しないでください。`/replace`が動作しなくなるはずです。
+
+・.configに存在するweb.secret_keyには予測不可能で十分に長い文字列を設定してください。
+
+
+## web上での操作
+
+ホストipアドレス:<configで設定したport>を用いて操作することができます。
+
+アクセス時にtokenを要求されるため、discordで`/token`を実行しtokenを入手してください。
+
+現在のところwaitressを利用し実装されています。そのためhttpsを用いて実行する場合(推奨)リバースプロキシを利用してください。
+
+## 動作確認
+
+|確認バージョン|日時|確認時のOS|
+|----|----|----|
+|Java vanilla 1.9.4|2024/06/26|Windows 11|
+|Java vanilla 1.19|2024/06/26|Windows 11|
+|Java vanilla 1.19.4|2024/07/31|Windows 11|
+|Java fabric 1.20.1|2024/06/26|Windows 11|
+|Bedrock dedicated server 1.21|2024/07/30|Windows 11 & Ubuntu(wsl2)|
+
+java版serverをWindowsで起動する際一般に利用されるような以下の内容のbatをconfigのserver_nameに設定しています。noguiオプションが無い場合現在/stop等が利用できません。(fabric : start.bat , forge : run.bat)
+
+> [!WARNING]
+> -Dfile.encoding=UTF-8が存在しない場合一部環境で特殊文字等が正常に表示されません。またpauseのようなコマンドを記載しないでください。(このプログラムはサーバーを制御するプログラムです。それ以外のコマンドを実行しないでください。)
+
+`java -Xmx4048M -Xms1024M -Dfile.encoding=UTF-8 -jar server.jar nogui`
+
+### 確認済み環境
+
+windows 11 version 23H2  / python3.12.2&3.10.2
+
+ubuntu(wsl2) / python3.8.10 (古いバージョンのPythonを利用する場合は、configの初期設定が相対パスになります。絶対パスに直してから実行してください)
 
 ### 動作状態
 
@@ -152,12 +171,6 @@ server.pyはサーバ本体と同じ改装に配置することを推奨しま�
 以下の画像は、webアクセス時の画面です。(PC/スマホ)
 
 ![PCサイズ](https://github.com/user-attachments/assets/a1b09ad4-9fde-4df9-abd8-cb6628589a67)![スマホサイズ](https://github.com/user-attachments/assets/6b59139f-363d-4a92-b7c8-398ed9d03d78)
-
-## 注意
-
-・生成されるupdate.pyの名前は変更しないでください。`/replace`が動作しなくなるはずです。
-
-・.configに存在するweb.secret_keyには予測不可能で十分に長い文字列を設定してください。
 
 ### /cmd
 
