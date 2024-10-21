@@ -1386,11 +1386,11 @@ def gen_web_token():
 #/tokengen トークンを生成する
 @tree.command(name="tokengen",description=COMMAND_DESCRIPTION[lang]["tokengen"])
 async def tokengen(interaction: discord.Interaction):
+    await print_user(token_logger,interaction.user)
     #管理者権限を要求
     if not await is_administrator(interaction.user):
         await not_enough_permission(interaction,token_logger)
         return
-    await print_user(token_logger,interaction.user)
     new_token = gen_web_token()
     await interaction.response.send_message(RESPONSE_MSG["tokengen"]["success"].format(new_token),ephemeral=True)
     token_logger.info('token sent')
